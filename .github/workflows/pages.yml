@@ -40,7 +40,7 @@ jobs:
       - name: Plocka ut filerna som ska publiceras
         run: |
           mkdir _site
-          cp -r index.html manifest.webmanifest sw.js precache.js css js data icons flaggor ljud fonts _site/
+          cp -r index.html manifest.webmanifest sw.js precache.js css js data icons flaggor siluetter ljud fonts _site/
           rm -rf _site/data/kalla
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

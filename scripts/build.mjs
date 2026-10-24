@@ -12,6 +12,13 @@ const read = (p) => readFileSync(join(root, p), 'utf8');
 const kalla = JSON.parse(read('data/kalla/lander.json'));
 const ids = new Set(kalla.lander.map((l) => l.id));
 const farger = JSON.parse(read('data/flaggfarger.json'));
+const former = JSON.parse(read('data/siluettform.json'));
+
+// Huvudstäder som är politiskt omstridda, eller som heter som landet, är inte med i huvudstadsfrågorna.
+const UTAN_HUVUDSTADSFRAGA = new Set(['il', 'ps', 'va', 'mc', 'sg']);
+// Siluetter som bara blir prickar: små länder och utspridda ögrupper.
+const SILUETT_MIN_YTA = 20000;
+const UTAN_SILUETT = new Set(['sb']);
 
 // Kändhetsgrupp per land. Varje land ska finnas i exakt en grupp.
 const kand = new Map();
@@ -29,7 +36,9 @@ const countries = kalla.lander.map((l) => {
   if (!existsSync(join(root, 'flaggor', `${l.id}.svg`))) {
     throw new Error(`Flagga saknas för ${l.id}`);
   }
-  if (!farger[l.id]) throw new Error(`data/flaggfarger.json saknar ${l.id}: kör scripts/flaggfarger.cjs`);
+  if (!farger[l.id]) throw new Error(`data/flaggfarger.json saknar ${l.id}: kör scripts/fingeravtryck.cjs`);
+  if (!former[l.id]) throw new Error(`data/siluettform.json saknar ${l.id}: kör scripts/fingeravtryck.cjs`);
+  const ovriga = (l.ovriga_huvudstader || []).map((h) => h.namn);
   return {
     id: l.id,
     namn: l.namn.sv,
@@ -38,6 +47,20 @@ const countries = kalla.lander.map((l) => {
     kontinent: l.kontinent,
     liknar: (l.felsvar.flagga_liknar || []).filter((id) => ids.has(id)),
     farg: farger[l.id],
+    huvudstad: l.huvudstad.namn,
+    // Övriga huvudstäder får aldrig bli felsvar, de är ju också rätt.
+    ovrigaHuvudstader: ovriga,
+    huvudstadFelsvar: UTAN_HUVUDSTADSFRAGA.has(l.id)
+      ? null
+      : l.felsvar.huvudstad.map((f) => f.svar).filter((svar) => !ovriga.includes(svar) && svar !== l.huvudstad.namn),
+    yta: l.yta_km2,
+    folk: l.befolkning.antal,
+    // Länder i två världsdelar är inte med i världsdelsfrågorna.
+    tvaVarldsdelar: Array.isArray(l.kontinenter) && l.kontinenter.length > 1,
+    grannar: l.grannlander.filter((id) => ids.has(id)),
+    inland: l.inlandsstat,
+    siluett: l.yta_km2 >= SILUETT_MIN_YTA && !UTAN_SILUETT.has(l.id),
+    form: former[l.id],
   };
 });
 
@@ -54,6 +77,7 @@ const files = [
   ...readdirSync(join(root, 'ljud')).map((f) => `ljud/${f}`),
   ...readdirSync(join(root, 'fonts')).filter((f) => f.endsWith('.woff2')).map((f) => `fonts/${f}`),
   ...countries.map((c) => `flaggor/${c.id}.svg`),
+  ...countries.filter((c) => c.siluett).map((c) => `siluetter/${c.id}.svg`),
 ].sort();
 
 const hash = createHash('sha256');

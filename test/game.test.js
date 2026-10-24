@@ -242,7 +242,7 @@ test('smäller det under överlämningen förlorar mottagaren', () => {
 });
 
 test('fel svar kan spräcka bomben direkt', () => {
-  const { game } = setup(trio, { rules: { frikortChance: 0, fuseMinMs: 2000, fuseMaxMs: 2000 } });
+  const { game } = setup(trio, { rules: { frikortChance: 0, fuseMinMs: 2000, fuseMaxMs: 2000, fuseFloorMs: 0 } });
   game.startRound();
   const q = game.current;
   assert.equal(game.answer((q.correctIndex + 1) % q.options.length), 'wrong');

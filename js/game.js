@@ -1,18 +1,27 @@
 // Spelmotorn. Ren logik utan DOM, så att den går att testa i Node.
 // Tiden kommer från clock() i millisekunder, så att testerna kan styra den.
-import { LEVELS, QuestionSource, difficultyForRound, maxRounds } from './questions.js';
+import { LEVELS, difficultyForRound, maxRounds } from './questions.js';
+import { CATEGORIES, Quiz } from './categories.js';
 import { TurnOrder } from './order.js';
 import { pick, randInt } from './random.js';
 
 export const RULES = {
   lives: 3,
+  // Första rundans timer slumpas mellan min och max. Varje följande runda
+  // blir kortare (fuseDecay), men aldrig under fuseFloorMs.
   fuseMinMs: 120000,
   fuseMaxMs: 240000,
-  // I början tickar bomben lugnt i några varv innan tempot börjar öka. Det
-  // lugna läget slutar senast när halva tiden har gått, så att det alltid
-  // hinner accelerera före smällen.
+  fuseDecay: 0.85,
+  fuseFloorMs: 30000,
+  // I början tickar bomben lugnt i några varv innan tempot börjar öka: två
+  // varv, eller ett när man är många. Det lugna läget slutar senast när halva
+  // tiden har gått, så att det alltid hinner accelerera före smällen.
   calmLaps: 2,
+  calmLapsMany: 1,
+  manyPlayers: 5,
   calmMaxShare: 0.5,
+  // Den som sprängs väljer kategorier för nästa runda, högst så här många.
+  maxRoundCategories: 2,
   wrongPenaltyMs: 3000,
   lockMs: 1000,
   frikortChance: 0.1,
@@ -25,11 +34,21 @@ export const RULES = {
 //   exploded  bomben har smällt
 //   over      en spelare är kvar
 export class Game {
-  constructor({ players, countries, rng = Math.random, clock = () => Date.now(), rules = RULES }) {
+  constructor({
+    players,
+    countries,
+    categories = ['flaggor'],
+    rng = Math.random,
+    clock = () => Date.now(),
+    rules = RULES,
+  }) {
     this.rng = rng;
     this.clock = clock;
     this.rules = rules;
-    this.questions = new QuestionSource(countries, rng);
+    this.questions = new Quiz(countries, rng);
+    // Kategorierna som kryssades i för matchen. Rundans kategorier väljs bland dem.
+    this.categories = categories.filter((c) => c in CATEGORIES);
+    if (this.categories.length === 0) this.categories = ['flaggor'];
     this.order = new TurnOrder(rng);
     this.players = players.map((p, i) => ({ id: i, alias: p.alias, level: p.level, lives: rules.lives }));
     this.questionCount = 0;
@@ -41,6 +60,8 @@ export class Game {
     this.phase = 'intro';
     this.holder = pick(this.rng, this.alive()).id;
     this.round = 0;
+    this.roundCategories = [...this.categories];
+    this.chooser = null;
     this.explosion = null;
     this.winner = null;
     this.current = null;
@@ -62,13 +83,23 @@ export class Game {
   startRound() {
     if (this.phase !== 'intro') return;
     this.round++;
-    this.fuseMs = randInt(this.rng, this.rules.fuseMinMs, this.rules.fuseMaxMs);
+    this.fuseMs = this.fuseFor(this.round);
     this.startedAt = this.clock();
     this.deadline = this.startedAt + this.fuseMs;
     this.calmEndedAt = null;
     this.order.reset(this.alive().map((p) => p.id), this.holder);
     this.lockedUntil = 0;
     this.serve();
+  }
+
+  // Rundans timer: slumpad, och kortare för varje runda.
+  fuseFor(round) {
+    const base = randInt(this.rng, this.rules.fuseMinMs, this.rules.fuseMaxMs);
+    return Math.max(this.rules.fuseFloorMs, Math.round(base * this.rules.fuseDecay ** (round - 1)));
+  }
+
+  calmLaps() {
+    return this.players.length >= this.rules.manyPlayers ? this.rules.calmLapsMany : this.rules.calmLaps;
   }
 
   serve() {
@@ -78,11 +109,10 @@ export class Game {
       this.current = { type: 'frikort' };
       return;
     }
-    // Frågetyperna växlar: flagga → namn, namn → flagga.
-    const kind = this.questionCount % 2 === 0 ? 'flagga' : 'namn';
     this.questionCount++;
     const level = this.player().level;
-    const question = this.questions.next({ options: LEVELS[level].options, difficulty: this.difficulty(), kind });
+    const category = pick(this.rng, this.roundCategories);
+    const question = this.questions.next({ category, options: LEVELS[level].options, difficulty: this.difficulty() });
     this.current = { type: 'fraga', level, ...question };
   }
 
@@ -143,7 +173,7 @@ export class Game {
   updateCalm() {
     if (!this.isCalm()) return;
     const latest = this.startedAt + this.fuseMs * this.rules.calmMaxShare;
-    if (this.order.laps >= this.rules.calmLaps || this.now() >= latest) {
+    if (this.order.laps >= this.calmLaps() || this.now() >= latest) {
       this.calmEndedAt = Math.min(this.now(), latest);
     }
   }
@@ -189,18 +219,30 @@ export class Game {
     this.phase = 'exploded';
     const alive = this.alive();
     if (alive.length === 1) this.winner = alive[0].id;
+    // Den som förlorade livet startar nästa runda och väljer kategorier.
+    // Är den ute lottas någon annan.
+    this.chooser = loser.lives > 0 ? loser.id : pick(this.rng, alive).id;
   }
 
-  nextRound() {
+  // categories: det den som sprängdes valde för nästa runda (valfritt).
+  nextRound(categories = null) {
     if (this.phase !== 'exploded') return;
     if (this.winner !== null) {
       this.phase = 'over';
       return;
     }
-    // Den som förlorade livet startar. Är den ute lottas någon annan.
-    if (this.player().lives === 0) this.holder = pick(this.rng, this.alive()).id;
+    if (categories) this.chooseCategories(categories);
+    this.holder = this.chooser;
     this.explosion = null;
     this.phase = 'intro';
+  }
+
+  // Kategorierna för nästa runda, valda av den som startar den. Bara matchens
+  // kategorier räknas, och högst maxRoundCategories.
+  chooseCategories(categories) {
+    if (this.phase !== 'intro' && this.phase !== 'exploded') return;
+    const valid = [...new Set(categories)].filter((c) => this.categories.includes(c));
+    if (valid.length > 0) this.roundCategories = valid.slice(0, this.rules.maxRoundCategories);
   }
 
   pause() {

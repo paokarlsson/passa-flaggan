@@ -12,15 +12,38 @@ offline när det har öppnats en gång.
 
 - 2–8 spelare med alias och ålder. Åldern föreslår en nivå (under 9 Barn,
   9–14 Normal, 15+ Nörd) som går att ändra.
-- Alla har 3 liv. Bomben har en dold timer på 2–4 minuter.
-- De två första varven tickar pulsen lugnt. Sedan ökar tempot fram till smällen.
-  Det lugna läget slutar senast när halva tiden har gått.
-- Frågorna växlar: visa flaggan och välj landet, eller visa landet och välj flaggan.
+- Alla har 3 liv. Bomben har en dold timer: 2–4 minuter första rundan, och
+  varje runda blir cirka 15 % kortare, ner till 30 sekunder.
+- De första varven tickar pulsen lugnt (två varv, eller ett med 5 spelare eller
+  fler). Sedan ökar tempot fram till smällen. Det lugna läget slutar senast när
+  halva tiden har gått.
+- På startskärmen kryssar man i en eller flera kategorier. Frågorna blandas
+  fråga för fråga. Den som sprängs väljer en eller två av dem till nästa runda,
+  på skärmen före rundan.
 - Rätt svar: nästa spelares namn visas och mobilen skickas. Timern tickar under
   överlämningen, och smäller det då är det mottagaren som förlorar livet.
 - Fel svar: 1 sekunds spärr, 3 sekunder dras från bomben och en ny fråga visas.
 - Ungefär var tionde fråga byts mot ett frikort som skickar vidare direkt.
 - Ordningen slumpas, men alla får en tur per varv och ingen får mobilen två gånger i rad.
+
+### Kategorier
+
+| Kategori | Fråga | Svårt blir det när … |
+|---|---|---|
+| Flaggor | Flagga → land, eller land → flagga | flaggorna är förväxlingsbara |
+| Huvudstäder | Land → huvudstad, eller huvudstad → land | felsvaren är största staden, tidigare huvudstad eller grannens huvudstad |
+| Störst | Vilket land är störst till ytan? | länderna är nästan lika stora |
+| Flest invånare | Var bor flest människor? | länderna har nästan lika många invånare |
+| Världsdel | I vilken världsdel ligger landet? | felsvaren är närliggande världsdelar |
+| Siluett | Vilket land har formen? | felsvaren är grannar med liknande form |
+| Grannar | Vilket land gränsar (INTE) till landet? | felsvaren ligger i samma region, och INTE-varianten dyker upp |
+| Kust | Vilket land saknar kust? | felsvaren är kustländer som är grannar |
+| Udda ut | Vilken flagga hör inte till världsdelen? | det udda landet ligger i en granndel och har liknande flagga |
+
+Israel, Palestina, Vatikanstaten, Monaco och Singapore är inte med i
+huvudstadsfrågorna (omstridda huvudstäder, eller huvudstaden heter som landet).
+Länder i två världsdelar är inte med i Världsdel och Udda ut, och små länder och
+utspridda ögrupper inte i Siluett.
 
 ### Svårighetstrappa
 
@@ -31,10 +54,10 @@ och så vidare. Revansch börjar om från första steget.
 - **Kända länder först.** Alla länder är indelade i fem kändhetsgrupper i
   `data/kandhet.json`. Första rundan tar bara grupp 1 (t.ex. Sverige, USA,
   Japan), och sedan flyttas fönstret uppåt till grupp 3–5 på sista steget.
-- **Olika flaggor först.** Felalternativen väljs efter hur lika flaggorna ser
-  ut: helt olika flaggor i början, förväxlingsbara på slutet. Likheten räknas
-  ut från flaggornas färger i ett rutnät (`data/flaggfarger.json`, tas fram
-  med `scripts/flaggfarger.cjs`).
+- **Olika först.** Felalternativen ligger långt från rätt svar i början och
+  nära på slutet, se tabellen ovan. Flaggornas och siluetternas likhet räknas
+  ut från bilderna (`data/flaggfarger.json` och `data/siluettform.json`, tas
+  fram med `scripts/fingeravtryck.cjs`).
 
 Spelarens nivå styr bara antalet alternativ:
 
@@ -85,7 +108,8 @@ filer som sparas för offline-läge, med en version som ändras när innehållet
 ### Struktur
 
 - `js/game.js`: spelmotorn (faser, bomb, liv, frikort), utan DOM
-- `js/questions.js`: frågor och felaktiga alternativ per nivå
+- `js/questions.js`: nivåer, svårighetstrappan och flaggfrågor
+- `js/categories.js`: alla kategorier och deras felsvar
 - `js/order.js`: turordningen
 - `js/main.js`: gränssnittet
 - `js/audio.js`: ljudmotorn (puls, effekter, smäll, keep-alive) och vibration

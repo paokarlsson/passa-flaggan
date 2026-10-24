@@ -1,12 +1,14 @@
 // Gränssnittet: ritar skärmarna utifrån spelmotorns fas och styr ljudet.
 import { Game, RULES } from './game.js';
 import { LEVELS, levelForAge } from './questions.js';
+import { CATEGORIES } from './categories.js';
 import { AudioEngine, vibrate } from './audio.js';
 import * as icon from './icons.js';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
 const STORAGE_KEY = 'passa-flaggan:spelare';
+const CATEGORY_KEY = 'passa-flaggan:kategorier';
 // Spärr mot att någon i farten råkar trycka på nästa skärms knapp.
 const HANDOVER_GUARD_MS = 500;
 const EXPLOSION_GUARD_MS = 1500;
@@ -17,6 +19,8 @@ const flashEl = document.getElementById('flash');
 let countries = [];
 let game = null;
 let setupPlayers = loadPlayers();
+let setupCategories = loadCategories();
+let pendingCategories = []; // det den som sprängdes väljer för nästa runda
 let rendered = null; // vad som senast ritades, för att veta när skärmen behöver ritas om
 let freezing = false; // pausen mellan att bomben smäller och att smällen visas
 let guardUntil = 0;
@@ -34,6 +38,9 @@ const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const flagImg = (c, cls = 'flag') => `<img class="${cls}" src="flaggor/${c.id}.svg" alt="Flagga" draggable="false">`;
+const silhouetteImg = (c) =>
+  `<img class="silhouette" src="siluetter/${c.id}.svg" alt="Ett lands form" draggable="false">`;
+const categoryLabel = (id) => CATEGORIES[id].chip ?? CATEGORIES[id].label;
 
 // Hjärtan för liv kvar och tomma för förlorade. Den som är ute får en etikett i stället.
 const hearts = (lives) =>
@@ -57,6 +64,25 @@ function loadPlayers() {
 function savePlayers() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(setupPlayers));
+  } catch {
+    // Inte viktigt om det inte går att spara.
+  }
+}
+
+function loadCategories() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CATEGORY_KEY));
+    const valid = Array.isArray(saved) ? saved.filter((c) => c in CATEGORIES) : [];
+    if (valid.length) return valid;
+  } catch {
+    // Ingen lagring tillgänglig.
+  }
+  return ['flaggor'];
+}
+
+function saveCategories() {
+  try {
+    localStorage.setItem(CATEGORY_KEY, JSON.stringify(setupCategories));
   } catch {
     // Inte viktigt om det inte går att spara.
   }
@@ -120,18 +146,30 @@ function renderSetup() {
           .join('')}
       </ol>
       ${setupPlayers.length < MAX_PLAYERS ? `<button type="button" class="btn ghost add">+ Lägg till spelare</button>` : ''}
+      <section class="categories">
+        <p class="section-title">Kategorier <span>blandas fråga för fråga</span></p>
+        <div class="category-grid">
+          ${Object.keys(CATEGORIES)
+            .map(
+              (id) => `<button type="button" class="cat cat-${id} ${setupCategories.includes(id) ? 'on' : ''}"
+                data-cat="${id}" aria-pressed="${setupCategories.includes(id)}">${CATEGORIES[id].label}</button>`,
+            )
+            .join('')}
+        </div>
+      </section>
       <button type="button" class="btn big start" ${canStart ? '' : 'disabled'}>Starta match</button>
       ${soundToggle()}
       <details class="rules">
         <summary>Så spelar man</summary>
         <ul>
-          <li>Alla börjar med 3 liv. Bomben har en dold timer på 2–4 minuter.</li>
+          <li>Alla börjar med 3 liv. Bomben har en dold timer. Första rundan är den 2–4 minuter, och varje runda blir lite kortare.</li>
           <li>De första varven tickar bomben lugnt. Sedan går det allt fortare.</li>
           <li>Svara rätt så blinkar skärmen grönt. Skicka mobilen till den vars namn visas.</li>
           <li>Fel svar ger 1 sekunds spärr och drar 3 sekunder från bomben.</li>
           <li>Ibland får man ett frikort och kan skicka vidare direkt.</li>
           <li>Den som håller mobilen när det smäller förlorar ett liv. Sist kvar vinner!</li>
-          <li>Första rundan är lätt, och för varje runda blir flaggorna mer okända och mer lika varandra.</li>
+          <li>Första rundan är lätt, och för varje runda blir länderna mer okända och svarsalternativen mer lika varandra.</li>
+          <li>Kryssa i en eller flera kategorier. Den som sprängs väljer en eller två av dem till nästa runda.</li>
           <li>Nivån styr antalet svarsalternativ: Barn 3, Normal 4, Nörd 6.</li>
           <li>Slå på ljudet (och stäng av ljudlöst läge på iPhone) för full effekt.</li>
         </ul>
@@ -157,7 +195,7 @@ function renderGame() {
         <p class="chip">Runda ${g.round + 1}</p>
         <div class="bomb-idle">${icon.bomb(150)}</div>
         <p class="sticker lead"><strong>${esc(holder.alias)}</strong> börjar</p>
-        <p class="hint">Sätt er i en ring. Tryck när alla är redo.</p>
+        ${g.round > 0 && g.categories.length > 1 ? chooserHtml(holder) : '<p class="hint">Sätt er i en ring. Tryck när alla är redo.</p>'}
         <button type="button" class="btn big go">Tänd stubinen!</button>
         ${livesList()}
       </section>`;
@@ -181,32 +219,13 @@ function renderGame() {
       </section>`;
   } else if (g.phase === 'question') {
     const q = g.current;
-    const n = q.options.length;
-    if (q.kind === 'flagga') {
-      html = `
-        <section class="screen question">
-          ${topBar()}
-          <div class="prompt">
-            <div class="flag-sticker">${flagImg(q.answer, 'flag hero')}</div>
-            <p class="ask">Vilket land?</p>
-          </div>
-          <div class="answers names n${n}">
-            ${q.options.map((o, i) => `<button type="button" class="answer" data-i="${i}">${esc(o.namn)}</button>`).join('')}
-          </div>
-        </section>`;
-    } else {
-      html = `
-        <section class="screen question">
-          ${topBar()}
-          <div class="prompt text">
-            <p class="ask">Vilken flagga har</p>
-            <p class="country">${esc(q.answer.namn)}?</p>
-          </div>
-          <div class="answers flags n${n}">
-            ${q.options.map((o, i) => `<button type="button" class="answer" data-i="${i}" aria-label="Alternativ ${i + 1}">${flagImg(o)}</button>`).join('')}
-          </div>
-        </section>`;
-    }
+    html = `
+      <section class="screen question cat-${q.category}">
+        ${topBar()}
+        ${g.categories.length > 1 ? `<p class="cat-chip cat-${q.category}">${categoryLabel(q.category)}</p>` : ''}
+        <div class="prompt">${promptHtml(q)}</div>
+        ${answersHtml(q)}
+      </section>`;
   } else if (g.phase === 'exploded') {
     const e = g.explosion;
     const loser = g.player(e.loser);
@@ -215,19 +234,13 @@ function renderGame() {
     if (e.duringHandover) {
       reveal = `<p class="sticker note">Bomben small medan mobilen skickades!</p>`;
     } else if (q) {
-      reveal = `
-        <div class="reveal">
-          ${flagImg(q.answer)}
-          <div>
-            <p class="reveal-label">${q.kind === 'flagga' ? 'Flaggan var' : 'Rätt flagga för'}</p>
-            <p class="reveal-name">${esc(q.answer.namn)}</p>
-          </div>
-        </div>`;
+      reveal = revealHtml(q.reveal);
     }
+    const chooser = g.player(g.chooser);
     const button =
       g.winner !== null
         ? `<button type="button" class="btn big next">Se vinnaren!</button>`
-        : `<button type="button" class="btn big next">${e.out ? 'Starta nästa runda' : `${esc(loser.alias)}, kör igen!`}</button>`;
+        : `<button type="button" class="btn big next">${esc(chooser.alias)}, kör igen!</button>`;
     html = `
       <section class="screen center exploded">
         <div class="boom">${icon.burst()}<span>PANG!</span></div>
@@ -268,6 +281,80 @@ function renderGame() {
   app.innerHTML = html;
   rendered = { screen: 'game', phase: g.phase, current: g.current, holder: g.holder, paused: !!g.paused };
   if (g.phase === 'over') startConfetti(app.querySelector('.confetti'));
+}
+
+// Det som frågas om: flagga, siluett eller text, med frågetext före och efter.
+function promptHtml(q) {
+  const s = q.subject;
+  let html = '';
+  if (s.flag && s.small) html += `<div class="flag-sticker small">${flagImg(s.flag)}</div>`;
+  if (s.icon) html += `<div class="prompt-icon">${icon.category(s.icon)}</div>`;
+  if (q.ask) html += `<p class="ask">${esc(q.ask)}</p>`;
+  if (s.flag && !s.small) html += `<div class="flag-sticker">${flagImg(s.flag, 'flag hero')}</div>`;
+  if (s.silhouette) html += `<div class="silhouette-sticker">${silhouetteImg(s.silhouette)}</div>`;
+  if (s.text) {
+    const sentence = !s.flag && !q.ask && !s.pin;
+    html += `<p class="country ${sentence ? 'sentence' : ''}">${s.pin ? icon.pin() : ''}${esc(s.text)}</p>`;
+  }
+  if (q.after) html += `<p class="ask">${esc(q.after)}</p>`;
+  return html;
+}
+
+function answersHtml(q) {
+  const n = q.options.length;
+  const style = q.optionStyle === 'flag' ? 'flags' : q.optionStyle === 'textflag' ? 'names textflag' : 'names';
+  const button = (o, i) => {
+    if (q.optionStyle === 'flag') {
+      return `<button type="button" class="answer" data-i="${i}" aria-label="Alternativ ${i + 1}">${flagImg(o.flag)}</button>`;
+    }
+    const thumb = q.optionStyle === 'textflag' ? flagImg(o.flag, 'flag thumb') : '';
+    return `<button type="button" class="answer" data-i="${i}">${thumb}<span>${esc(o.text)}</span></button>`;
+  };
+  return `<div class="answers ${style} n${n}">${q.options.map(button).join('')}</div>`;
+}
+
+// Facit vid smällen.
+function revealHtml(r) {
+  if (r.bars) {
+    return `
+      <div class="reveal bars">
+        <p class="reveal-title">${esc(r.label)}</p>
+        ${r.bars
+          .map(
+            (b) => `
+          <div class="bar-row ${b.correct ? 'correct' : ''}">
+            <div class="bar-text"><span>${esc(b.text)}</span><span>${esc(b.valueText)}</span></div>
+            <div class="bar" style="width: ${Math.max(3, Math.round(b.share * 100))}%"></div>
+          </div>`,
+          )
+          .join('')}
+      </div>`;
+  }
+  const picture = r.silhouette ? silhouetteImg(r.silhouette) : r.flag ? flagImg(r.flag) : '';
+  return `
+    <div class="reveal">
+      ${picture}
+      <div>
+        <p class="reveal-label">${esc(r.label)}</p>
+        <p class="reveal-name ${r.small ? 'small' : ''}">${esc(r.name)}</p>
+      </div>
+    </div>`;
+}
+
+// Den som sprängdes väljer en eller två kategorier till nästa runda.
+function chooserHtml(chooser) {
+  return `
+    <section class="chooser">
+      <p class="section-title">${esc(chooser.alias)} väljer kategori <span>en eller två</span></p>
+      <div class="category-grid">
+        ${game.categories
+          .map(
+            (id) => `<button type="button" class="cat cat-${id} pick ${pendingCategories.includes(id) ? 'on' : ''}"
+              data-cat="${id}" aria-pressed="${pendingCategories.includes(id)}">${CATEGORIES[id].label}</button>`,
+          )
+          .join('')}
+      </div>
+    </section>`;
 }
 
 function soundToggle() {
@@ -353,6 +440,17 @@ app.addEventListener('click', (ev) => {
     } else if (t.classList.contains('sound')) {
       toggleSound();
       return;
+    } else if (t.classList.contains('cat')) {
+      // Minst en kategori måste vara ikryssad.
+      const id = t.dataset.cat;
+      if (setupCategories.includes(id)) {
+        if (setupCategories.length > 1) setupCategories = setupCategories.filter((c) => c !== id);
+      } else {
+        setupCategories = [...setupCategories, id];
+      }
+      saveCategories();
+      renderSetup();
+      return;
     }
     savePlayers();
     renderSetup();
@@ -366,6 +464,9 @@ app.addEventListener('click', (ev) => {
   if (t.classList.contains('sound')) {
     toggleSound();
     return;
+  } else if (t.classList.contains('pick')) {
+    pickCategory(t.dataset.cat);
+    return;
   } else if (t.classList.contains('pause')) {
     g.pause();
   } else if (t.classList.contains('resume')) {
@@ -373,6 +474,7 @@ app.addEventListener('click', (ev) => {
   } else if (t.classList.contains('quit')) {
     endMatch();
   } else if (t.classList.contains('go')) {
+    if (g.round > 0) g.chooseCategories(pendingCategories);
     g.startRound();
   } else if (t.classList.contains('ready')) {
     g.ready();
@@ -416,6 +518,8 @@ function passed() {
 // så att bild och ljud kommer samtidigt även med Bluetooth-fördröjning.
 function exploded() {
   const delay = audio.explode();
+  // Förvalt är förra rundans kategorier, så det räcker med ett tryck för att köra vidare.
+  pendingCategories = [...game.roundCategories];
   freezing = true;
   document.body.classList.add('frozen');
   guardUntil = performance.now() + delay + EXPLOSION_GUARD_MS;
@@ -437,6 +541,20 @@ function exploded() {
   }, delay);
 }
 
+// Högst två: en tredje ersätter den som valdes först. Den sista går inte att välja bort.
+function pickCategory(id) {
+  if (pendingCategories.includes(id)) {
+    if (pendingCategories.length > 1) pendingCategories = pendingCategories.filter((c) => c !== id);
+  } else {
+    pendingCategories = [...pendingCategories, id].slice(-RULES.maxRoundCategories);
+  }
+  app.querySelectorAll('.pick').forEach((b) => {
+    const on = pendingCategories.includes(b.dataset.cat);
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on);
+  });
+}
+
 function toggleSound() {
   audio.unlock();
   audio.setEnabled(!audio.enabled);
@@ -448,7 +566,7 @@ function startMatch() {
   audio.keepAlive();
   keepAwake();
   const players = setupPlayers.map((p) => ({ alias: p.alias.trim(), level: p.level }));
-  game = new Game({ players, countries });
+  game = new Game({ players, countries, categories: setupCategories });
   history.pushState({ game: true }, '');
   render();
 }

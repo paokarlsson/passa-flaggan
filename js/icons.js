@@ -56,3 +56,34 @@ export const speaker = (on) =>
 
 export const close = () =>
   svg(18, '<path d="M6 6l12 12M18 6L6 18" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>');
+
+export const pin = () =>
+  `<svg class="icon pin" width="34" height="34" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" fill="var(--coral)" stroke="var(--ink)" stroke-width="2"/>
+    <circle cx="12" cy="10" r="2.6" fill="#ffffff" stroke="var(--ink)" stroke-width="2"/>
+  </svg>`;
+
+// Stora ikoner för frågor som bara är text.
+const CATEGORY_ICONS = {
+  storst: `<svg class="icon" width="88" height="88" viewBox="0 0 96 96" aria-hidden="true">
+      <g transform="rotate(-6 48 48)">
+        <rect x="10" y="10" width="76" height="76" rx="8" fill="var(--mint)" stroke="var(--ink)" stroke-width="4"/>
+        <path d="M26 70L70 26M70 26H54M70 26V42M26 70h16M26 70V54" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </svg>`,
+  folk: `<svg class="icon" width="120" height="80" viewBox="0 0 120 80" aria-hidden="true">
+      <circle cx="30" cy="26" r="12" fill="var(--sun)" stroke="var(--ink)" stroke-width="4"/>
+      <path d="M10 74a20 20 0 0 1 40 0z" fill="var(--sun)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="90" cy="26" r="12" fill="var(--lilac)" stroke="var(--ink)" stroke-width="4"/>
+      <path d="M70 74a20 20 0 0 1 40 0z" fill="var(--lilac)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="60" cy="20" r="14" fill="var(--coral)" stroke="var(--ink)" stroke-width="4"/>
+      <path d="M36 74a24 24 0 0 1 48 0z" fill="var(--coral)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+    </svg>`,
+  kust: `<svg class="icon" width="110" height="88" viewBox="0 0 120 96" aria-hidden="true">
+      <rect x="6" y="6" width="108" height="84" rx="14" fill="#ffffff" stroke="var(--ink)" stroke-width="4"/>
+      <path d="M18 40c8-8 16-8 24 0s16 8 24 0 16-8 24 0 12 6 12 6M18 60c8-8 16-8 24 0s16 8 24 0 16-8 24 0 12 6 12 6" fill="none" stroke="#2d8fd6" stroke-width="6" stroke-linecap="round"/>
+      <path d="M22 22L98 76" stroke="var(--coral)" stroke-width="8" stroke-linecap="round"/>
+    </svg>`,
+};
+
+export const category = (id) => CATEGORY_ICONS[id] ?? '';

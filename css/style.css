@@ -567,7 +567,7 @@ p {
 
 .boom {
   position: relative;
-  width: min(330px, 86vw);
+  width: min(250px, 64vw, 34dvh);
   aspect-ratio: 320 / 210;
   display: flex;
   align-items: center;
@@ -644,16 +644,17 @@ p {
   width: 100%;
   max-width: 400px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
 }
 
+/* En rad per spelare: namn till vänster, hjärtan till höger. */
 .tile {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 6px;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 10px;
   border: var(--line);
   border-radius: 14px;
   background: var(--paper);
@@ -736,6 +737,206 @@ p {
   font-family: var(--display);
   font-size: 2.4rem;
   transform: rotate(-2deg);
+}
+
+/* ---------- Kategorier ---------- */
+
+.cat-flaggor { --cat: var(--sun); }
+.cat-huvudstad { --cat: var(--coral); }
+.cat-storst { --cat: var(--mint); }
+.cat-folk { --cat: #ffa94d; }
+.cat-varldsdel { --cat: #b5e86b; }
+.cat-siluett { --cat: var(--lilac); }
+.cat-grannar { --cat: #ff9ecd; }
+.cat-kust { --cat: #9fe3ff; }
+.cat-udda { --cat: #f5d7a1; }
+
+.categories,
+.chooser {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  padding: 12px;
+  border: var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.section-title {
+  font-family: var(--display);
+  font-size: 1.25rem;
+}
+
+.section-title span {
+  font-family: var(--body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cat {
+  font: inherit;
+  font-weight: 900;
+  font-size: 0.95rem;
+  line-height: 1.1;
+  min-height: 56px;
+  padding: 6px;
+  border: var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--muted);
+  hyphens: manual;
+}
+
+.cat.on {
+  background: var(--cat);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.cat-chip {
+  align-self: center;
+  padding: 4px 14px;
+  border: var(--line);
+  border-radius: 999px;
+  background: var(--cat);
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.country.sentence {
+  font-size: clamp(1.7rem, 8vw, 2.3rem);
+  text-align: center;
+}
+
+.country .pin {
+  display: inline-block;
+  vertical-align: -4px;
+  margin-right: 6px;
+}
+
+.prompt-icon {
+  display: flex;
+  justify-content: center;
+}
+
+.flag-sticker.small {
+  width: 150px;
+  transform: rotate(-4deg);
+}
+
+.silhouette-sticker {
+  width: min(70%, 34dvh);
+  aspect-ratio: 1;
+  padding: 14px;
+  border: var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: 7px 7px 0 var(--ink);
+  transform: rotate(-3deg);
+  animation: pop 0.3s ease-out;
+}
+
+.silhouette {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.answers.textflag .answer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.flag.thumb {
+  width: 54px;
+  height: 40px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.answers.textflag.n6 .flag.thumb {
+  width: 42px;
+  height: 31px;
+}
+
+.reveal .silhouette {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.reveal-name.small {
+  font-family: var(--body);
+  font-weight: 900;
+  font-size: 1.1rem;
+  line-height: 1.25;
+}
+
+.reveal.bars {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 10px 12px;
+}
+
+.reveal-title {
+  font-family: var(--display);
+  font-size: 1.25rem;
+}
+
+/* En rad per land: stapeln ligger bakom namnet och värdet. */
+.bar-row {
+  position: relative;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bar-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 0.95rem;
+}
+
+.bar-row.correct .bar-text {
+  font-weight: 900;
+}
+
+.bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #9fe3ff;
+}
+
+.bar-row.correct .bar {
+  background: var(--mint);
+}
+
+.chooser .cat {
+  min-height: 44px;
 }
 
 /* ---------- Effekter ---------- */

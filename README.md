@@ -22,30 +22,6 @@ offline när det har öppnats en gång.
 - Ungefär var tionde fråga byts mot ett frikort som skickar vidare direkt.
 - Ordningen slumpas, men alla får en tur per varv och ingen får mobilen två gånger i rad.
 
-## Ljud
-
-Allt ljud syntetiseras med Web Audio API, utan ljudfiler. Det är gjort för en
-stor Bluetooth-högtalare men mixat så att det hörs även i mobilens egen
-högtalare. Högtalaren bär stämningen och mobilen ger personlig återkoppling med
-färg och vibration.
-
-- **Puls:** ett hjärtslag som ligger lugnt på 60 slag per minut de första
-  varven och sedan ökar till 180 slag per minut fram till smällen.
-  Ibland saktar det in en stund (en fint) så att man inte kan räkna ut timern.
-  Ett fel svar får tempot att hoppa upp direkt.
-- **Rätt och fel:** en kort swoosh och ett kort surr, under 200 ms.
-- **Smällen:** en dov bomb med sub-bas, dån och ett långt muller. Allt tystnar och skärmen fryser i cirka 0,3 s plus
-  Bluetooth-fördröjningen (`outputLatency`, annars 0,2 s). Sedan kommer
-  smällen i ljud och bild samtidigt.
-- **Keep-alive:** ett nästan ohörbart brus under hela matchen, så att
-  högtalaren inte somnar och klipper början av nästa ljud.
-- En limiter sist i kedjan hindrar smällen från att klippa.
-- Ljud av/på finns på startskärmen och i pausrutan.
-- **Musik:** lobbyn har låg menymusik (`ljud/meny.mp3`, loopar) som börjar vid
-  första trycket, eftersom webbläsare inte tillåter ljud innan dess. När bara en
-  spelare är kvar spelas vinnarlåten (`ljud/vinnare.mp3`). Under matchen spelas
-  ingen musik.
-
 ### Svårighetstrappa
 
 Svårigheten följer rundan och är samma för alla. Trappan har lika många steg
@@ -70,7 +46,7 @@ Spelarens nivå styr bara antalet alternativ:
 
 ## Ljud
 
-Allt ljud syntetiseras med Web Audio API, utan ljudfiler. Det är gjort för en
+Spelets ljud syntetiseras med Web Audio API, bara musiken är ljudfiler. Det är gjort för en
 stor Bluetooth-högtalare men mixat så att det hörs även i mobilens egen
 högtalare. Högtalaren bär stämningen och mobilen ger personlig återkoppling med
 färg och vibration.
@@ -91,12 +67,6 @@ färg och vibration.
   första trycket, eftersom webbläsare inte tillåter ljud innan dess. När bara en
   spelare är kvar spelas vinnarlåten (`ljud/vinnare.mp3`). Under matchen spelas
   ingen musik.
-
-| Nivå | Alternativ | Länder |
-|---|---|---|
-| Barn | 3 | 40 kända länder, se `data/barn.json` |
-| Normal | 4 | De 193 FN-länderna |
-| Nörd | 6 | Alla 197, med förväxlingsbara flaggor som alternativ |
 
 ## Utveckling
 

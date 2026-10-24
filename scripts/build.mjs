@@ -10,24 +10,34 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
 
 const kalla = JSON.parse(read('data/kalla/lander.json'));
-const barn = new Set(JSON.parse(read('data/barn.json')).lander);
 const ids = new Set(kalla.lander.map((l) => l.id));
+const farger = JSON.parse(read('data/flaggfarger.json'));
 
-for (const id of barn) {
-  if (!ids.has(id)) throw new Error(`data/barn.json: okänt land "${id}"`);
+// Kändhetsgrupp per land. Varje land ska finnas i exakt en grupp.
+const kand = new Map();
+for (const [grupp, lander] of Object.entries(JSON.parse(read('data/kandhet.json')).grupper)) {
+  for (const id of lander) {
+    if (!ids.has(id)) throw new Error(`data/kandhet.json: okänt land "${id}"`);
+    if (kand.has(id)) throw new Error(`data/kandhet.json: "${id}" finns i flera grupper`);
+    kand.set(id, Number(grupp));
+  }
 }
+const saknas = [...ids].filter((id) => !kand.has(id));
+if (saknas.length) throw new Error(`data/kandhet.json saknar: ${saknas.join(', ')}`);
 
 const countries = kalla.lander.map((l) => {
   if (!existsSync(join(root, 'flaggor', `${l.id}.svg`))) {
     throw new Error(`Flagga saknas för ${l.id}`);
   }
+  if (!farger[l.id]) throw new Error(`data/flaggfarger.json saknar ${l.id}: kör scripts/flaggfarger.cjs`);
   return {
     id: l.id,
     namn: l.namn.sv,
     fn: l.status === 'FN-medlem',
-    barn: barn.has(l.id),
+    kand: kand.get(l.id),
     kontinent: l.kontinent,
     liknar: (l.felsvar.flagga_liknar || []).filter((id) => ids.has(id)),
+    farg: farger[l.id],
   };
 });
 
@@ -56,4 +66,5 @@ writeFileSync(
     `self.PRECACHE_FILES = ${JSON.stringify(files, null, 0).replace(/","/g, '",\n  "').replace('["', '[\n  "').replace('"]', '"\n]')};\n`,
 );
 
-console.log(`${countries.length} länder (${barn.size} på Barn-nivå), ${files.length} filer i precache, version ${version}`);
+const perGrupp = [1, 2, 3, 4, 5].map((g) => countries.filter((c) => c.kand === g).length).join('/');
+console.log(`${countries.length} länder (kändhetsgrupper ${perGrupp}), ${files.length} filer i precache, version ${version}`);

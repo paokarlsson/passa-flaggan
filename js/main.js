@@ -124,7 +124,8 @@ function renderSetup() {
           <li>Fel svar ger 1 sekunds spärr och drar 3 sekunder från bomben.</li>
           <li>Ibland får man ett frikort och kan skicka vidare direkt.</li>
           <li>Den som håller mobilen när det smäller förlorar ett liv. Sist kvar vinner!</li>
-          <li>Nivå: Barn har 3 alternativ och kända flaggor, Normal 4 alternativ och alla FN-länder, Nörd 6 alternativ med förväxlingsbara flaggor.</li>
+          <li>Första rundan är lätt, och för varje runda blir flaggorna mer okända och mer lika varandra.</li>
+          <li>Nivån styr antalet svarsalternativ: Barn 3, Normal 4, Nörd 6.</li>
           <li>Slå på ljudet (och stäng av ljudlöst läge på iPhone) för full effekt.</li>
         </ul>
       </details>

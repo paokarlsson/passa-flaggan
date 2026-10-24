@@ -34,7 +34,7 @@ färg och vibration.
   Ibland saktar det in en stund (en fint) så att man inte kan räkna ut timern.
   Ett fel svar får tempot att hoppa upp direkt.
 - **Rätt och fel:** en kort swoosh och ett kort surr, under 200 ms.
-- **Smällen:** allt tystnar och skärmen fryser i cirka 0,3 s plus
+- **Smällen:** en dov bomb med sub-bas, dån och ett långt muller. Allt tystnar och skärmen fryser i cirka 0,3 s plus
   Bluetooth-fördröjningen (`outputLatency`, annars 0,2 s). Sedan kommer
   smällen i ljud och bild samtidigt.
 - **Keep-alive:** ett nästan ohörbart brus under hela matchen, så att
@@ -80,7 +80,7 @@ färg och vibration.
   Ibland saktar det in en stund (en fint) så att man inte kan räkna ut timern.
   Ett fel svar får tempot att hoppa upp direkt.
 - **Rätt och fel:** en kort swoosh och ett kort surr, under 200 ms.
-- **Smällen:** allt tystnar och skärmen fryser i cirka 0,3 s plus
+- **Smällen:** en dov bomb med sub-bas, dån och ett långt muller. Allt tystnar och skärmen fryser i cirka 0,3 s plus
   Bluetooth-fördröjningen (`outputLatency`, annars 0,2 s). Sedan kommer
   smällen i ljud och bild samtidigt.
 - **Keep-alive:** ett nästan ohörbart brus under hela matchen, så att

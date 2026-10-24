@@ -210,23 +210,25 @@ export class AudioEngine {
 
   // ---------- Ljud ----------
 
-  osc(type, t, dur, f0, f1, gain, dest) {
+  // attack: hur snabbt ljudet når full styrka. Kort ger ett hårt anslag, långt ett mjukt.
+  osc(type, t, dur, f0, f1, gain, dest, attack = 0.004) {
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(f0, t);
     if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(gain, t + 0.004);
+    g.gain.linearRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g).connect(dest);
     o.start(t);
     o.stop(t + dur + 0.02);
   }
 
-  noise(t, dur, gain, dest, filterType, f0, f1 = f0, q = 1) {
+  noise(t, dur, gain, dest, filterType, f0, f1 = f0, q = 1, attack = 0.003) {
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuffer;
+    src.loop = true; // bufferten är 2 s, längre brus loopar
     const filter = this.ctx.createBiquadFilter();
     filter.type = filterType;
     filter.Q.value = q;
@@ -234,7 +236,7 @@ export class AudioEngine {
     if (f1 !== f0) filter.frequency.exponentialRampToValueAtTime(f1, t + dur);
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(gain, t + 0.003);
+    g.gain.linearRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(filter).connect(g).connect(dest);
     src.start(t, this.rng() * 1.5);
@@ -255,6 +257,25 @@ export class AudioEngine {
     };
     thump(t, 1);
     thump(t + Math.min(0.17, interval * 0.3), 0.6);
+  }
+
+  // Mullret efter bomben: byggs upp och klingar sedan långsamt ut under några sekunder.
+  rumble(t) {
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    src.loop = true;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.value = 0.5;
+    filter.frequency.setValueAtTime(260, t);
+    filter.frequency.exponentialRampToValueAtTime(60, t + 4);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.9, t + 0.4);
+    g.gain.setTargetAtTime(0, t + 0.6, 1.1);
+    src.connect(filter).connect(g).connect(this.boomBus);
+    src.start(t, this.rng() * 1.5);
+    src.stop(t + 6);
   }
 
   // Kort swoosh uppåt, under 200 ms.
@@ -357,10 +378,12 @@ export class AudioEngine {
 
     const b = t + FREEZE_S;
     const bus = this.boomBus;
-    this.noise(b, 2.2, 1.0, bus, 'lowpass', 7000, 60, 0.7); // brus som mörknar
-    this.noise(b, 0.25, 0.6, bus, 'highpass', 900, 900, 0.7); // knallen, hörs i små högtalare
-    this.osc('sine', b, 1.4, 110, 28, 1.0, bus); // sub-bas som faller
-    this.osc('triangle', b, 0.5, 220, 55, 0.45, bus); // mellanregister
+    // En dov bomb, inte en smäll: inga höga frekvenser och mjuka anslag.
+    this.osc('sine', b, 2.6, 70, 22, 1.0, bus, 0.012); // sub-bas som faller
+    this.noise(b, 3.5, 1.0, bus, 'lowpass', 1100, 40, 0.5, 0.02); // dånet, mörknar
+    this.noise(b, 1.3, 0.55, bus, 'bandpass', 380, 110, 0.8, 0.015); // dov duns som hörs i små högtalare
+    this.osc('triangle', b, 1.0, 120, 38, 0.45, bus, 0.01); // tryckvågen
+    this.rumble(b + 0.15); // mullret efteråt
     this.sfxBus.gain.setValueAtTime(1, b);
     // Därefter tystnad: pulsen står still tills nästa runda, bara keep-alive-bruset hörs.
 

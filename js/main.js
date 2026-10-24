@@ -1,7 +1,7 @@
-// Gränssnittet: ritar skärmarna utifrån spelmotorns fas och driver tickandet.
+// Gränssnittet: ritar skärmarna utifrån spelmotorns fas och styr ljudet.
 import { Game } from './game.js';
 import { LEVELS, levelForAge } from './questions.js';
-import { sound, unlockAudio, vibrate } from './fx.js';
+import { AudioEngine, vibrate } from './audio.js';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
@@ -12,15 +12,20 @@ const EXPLOSION_GUARD_MS = 1500;
 
 const app = document.getElementById('app');
 const flashEl = document.getElementById('flash');
-const dangerEl = document.getElementById('danger');
 
 let countries = [];
 let game = null;
 let setupPlayers = loadPlayers();
 let rendered = null; // vad som senast ritades, för att veta när skärmen behöver ritas om
-let nextTickAt = 0;
+let freezing = false; // pausen mellan att bomben smäller och att smällen visas
 let guardUntil = 0;
 let wakeLock = null;
+
+const audio = new AudioEngine();
+// Mobilen vibrerar i takt med pulsen, starkare mot slutet.
+audio.onBeat = (p) => {
+  if (p > 0.3) vibrate(Math.round(10 + 50 * p));
+};
 
 // ---------- Hjälpare ----------
 
@@ -109,6 +114,7 @@ function renderSetup() {
       </ol>
       ${setupPlayers.length < MAX_PLAYERS ? `<button type="button" class="btn ghost add">+ Lägg till spelare</button>` : ''}
       <button type="button" class="btn big start" ${canStart ? '' : 'disabled'}>Starta match</button>
+      ${soundToggle()}
       <details class="rules">
         <summary>Så spelar man</summary>
         <ul>
@@ -233,14 +239,21 @@ function renderGame() {
         <div class="dialog">
           <p class="lead">Pausat</p>
           <button type="button" class="btn big resume">Fortsätt</button>
+          ${soundToggle()}
           <button type="button" class="btn ghost quit">Avsluta match</button>
         </div>
       </div>`;
   }
 
+  if (g.phase === 'question' && g.current.type === 'frikort' && rendered?.current !== g.current) audio.card();
   app.innerHTML = html;
   rendered = { screen: 'game', phase: g.phase, current: g.current, holder: g.holder, paused: !!g.paused };
   if (g.phase === 'over') startConfetti(app.querySelector('.confetti'));
+}
+
+function soundToggle() {
+  return `<button type="button" class="btn ghost sound" aria-pressed="${audio.enabled}">
+    ${audio.enabled ? '🔊 Ljud på' : '🔇 Ljud av'}</button>`;
 }
 
 function topBar() {
@@ -313,27 +326,30 @@ app.addEventListener('click', (ev) => {
     } else if (t.classList.contains('start')) {
       startMatch();
       return;
+    } else if (t.classList.contains('sound')) {
+      toggleSound();
+      return;
     }
     savePlayers();
     renderSetup();
     return;
   }
 
-  unlockAudio();
+  audio.unlock();
   if (performance.now() < guardUntil) return;
   const g = game;
 
-  if (t.classList.contains('pause')) {
+  if (t.classList.contains('sound')) {
+    toggleSound();
+    return;
+  } else if (t.classList.contains('pause')) {
     g.pause();
   } else if (t.classList.contains('resume')) {
     g.resume();
-    nextTickAt = 0;
   } else if (t.classList.contains('quit')) {
-    game = null;
-    dangerEl.style.opacity = 0;
+    endMatch();
   } else if (t.classList.contains('go')) {
     g.startRound();
-    nextTickAt = 0;
   } else if (t.classList.contains('ready')) {
     g.ready();
   } else if (t.classList.contains('use-card')) {
@@ -343,7 +359,7 @@ app.addEventListener('click', (ev) => {
     if (result === 'correct') {
       passed();
     } else if (result === 'wrong') {
-      sound.wrong();
+      audio.wrong();
       vibrate([80, 40, 80]);
       flash('wrong', 'FEL!');
       t.classList.add('wrong');
@@ -354,14 +370,13 @@ app.addEventListener('click', (ev) => {
   } else if (t.classList.contains('next')) {
     g.nextRound();
     if (g.phase === 'over') {
-      sound.win();
+      audio.win();
       vibrate([100, 50, 100, 50, 300]);
     }
   } else if (t.classList.contains('rematch')) {
     g.newMatch();
   } else if (t.classList.contains('edit')) {
-    game = null;
-    render();
+    endMatch();
     return;
   }
   update(true);
@@ -369,35 +384,59 @@ app.addEventListener('click', (ev) => {
 
 function passed() {
   if (game.phase !== 'handover') return;
-  sound.correct();
+  audio.correct();
   vibrate(60);
   flash('right', 'SKICKA!');
   guardUntil = performance.now() + HANDOVER_GUARD_MS;
 }
 
+// Bomben har smällt. Vem som förlorade är redan avgjort, men först fryser allt:
+// ljudet tystnar och skärmen dimmas. Smällen visas när ljudet når högtalaren,
+// så att bild och ljud kommer samtidigt även med Bluetooth-fördröjning.
 function exploded() {
-  sound.boom();
-  vibrate([500, 100, 300, 100, 600]);
-  flash('boom');
-  document.body.classList.remove('shake');
-  void document.body.offsetWidth;
-  document.body.classList.add('shake');
-  dangerEl.style.opacity = 0;
-  guardUntil = performance.now() + EXPLOSION_GUARD_MS;
-  render();
-  const btn = app.querySelector('.next');
-  if (btn) {
-    btn.disabled = true;
-    setTimeout(() => (btn.disabled = false), EXPLOSION_GUARD_MS);
-  }
+  const delay = audio.explode();
+  freezing = true;
+  document.body.classList.add('frozen');
+  guardUntil = performance.now() + delay + EXPLOSION_GUARD_MS;
+  setTimeout(() => {
+    freezing = false;
+    document.body.classList.remove('frozen');
+    if (!game || game.phase !== 'exploded') return;
+    vibrate([500, 100, 300, 100, 600]);
+    flash('boom');
+    document.body.classList.remove('shake');
+    void document.body.offsetWidth;
+    document.body.classList.add('shake');
+    render();
+    const btn = app.querySelector('.next');
+    if (btn) {
+      btn.disabled = true;
+      setTimeout(() => (btn.disabled = false), EXPLOSION_GUARD_MS);
+    }
+  }, delay);
+}
+
+function toggleSound() {
+  audio.unlock();
+  audio.setEnabled(!audio.enabled);
+  app.querySelectorAll('.sound').forEach((b) => (b.outerHTML = soundToggle()));
 }
 
 function startMatch() {
-  unlockAudio();
+  audio.unlock();
+  audio.keepAlive();
   keepAwake();
   const players = setupPlayers.map((p) => ({ alias: p.alias.trim(), level: p.level }));
   game = new Game({ players, countries });
   history.pushState({ game: true }, '');
+  render();
+}
+
+function endMatch() {
+  audio.endMatch();
+  game = null;
+  freezing = false;
+  document.body.classList.remove('frozen');
   render();
 }
 
@@ -428,21 +467,13 @@ function loop() {
   const g = game;
   g.tick();
 
-  const live = (g.phase === 'question' || g.phase === 'handover') && !g.paused;
-  if (live) {
-    const p = g.progress();
-    const now = performance.now();
-    if (now >= nextTickAt) {
-      sound.tick(p);
-      if (p > 0.3) vibrate(Math.round(10 + 50 * p));
-      nextTickAt = now + 950 - 820 * p ** 1.3;
-    }
-    dangerEl.style.opacity = p > 0.7 ? ((p - 0.7) / 0.3).toFixed(2) : 0;
-  } else if (!g.paused) {
-    dangerEl.style.opacity = 0;
-  }
-
   update();
+  if (!game) return;
+
+  // Pulsen går när någon håller bomben, och står still vid paus och mellan rundor.
+  const live = (g.phase === 'question' || g.phase === 'handover') && !g.paused;
+  if (live) audio.setProgress(g.progress());
+  audio.setPulse(live);
 }
 
 // Ritar om när spelets läge har ändrats. Bomben kan smälla både i loopen och
@@ -453,6 +484,7 @@ function update(force = false) {
     return;
   }
   const g = game;
+  if (freezing) return;
   if (g.phase === 'exploded' && rendered.phase !== 'exploded') {
     exploded();
     return;

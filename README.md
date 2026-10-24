@@ -20,6 +20,25 @@ offline när det har öppnats en gång.
 - Ungefär var tionde fråga byts mot ett frikort som skickar vidare direkt.
 - Ordningen slumpas, men alla får en tur per varv och ingen får mobilen två gånger i rad.
 
+## Ljud
+
+Allt ljud syntetiseras med Web Audio API, utan ljudfiler. Det är gjort för en
+stor Bluetooth-högtalare men mixat så att det hörs även i mobilens egen
+högtalare. Högtalaren bär stämningen och mobilen ger personlig återkoppling med
+färg och vibration.
+
+- **Puls:** ett hjärtslag som går från 60 till 180 slag per minut under rundan.
+  Ibland saktar det in en stund (en fint) så att man inte kan räkna ut timern.
+  Ett fel svar får tempot att hoppa upp direkt.
+- **Rätt och fel:** en kort swoosh och ett kort surr, under 200 ms.
+- **Smällen:** allt tystnar och skärmen fryser i cirka 0,3 s plus
+  Bluetooth-fördröjningen (`outputLatency`, annars 0,2 s). Sedan kommer
+  smällen i ljud och bild samtidigt.
+- **Keep-alive:** ett nästan ohörbart brus under hela matchen, så att
+  högtalaren inte somnar och klipper början av nästa ljud.
+- En limiter sist i kedjan hindrar smällen från att klippa.
+- Ljud av/på finns på startskärmen och i pausrutan.
+
 | Nivå | Alternativ | Länder |
 |---|---|---|
 | Barn | 3 | 40 kända länder, se `data/barn.json` |
@@ -46,7 +65,8 @@ filer som sparas för offline-läge, med en version som ändras när innehållet
 - `js/questions.js`: frågor och felaktiga alternativ per nivå
 - `js/order.js`: turordningen
 - `js/main.js`: gränssnittet
-- `js/fx.js`: ljud och vibration
+- `js/audio.js`: ljudmotorn (puls, effekter, smäll, keep-alive) och vibration
+- `js/tempo.js`: pulsens tempo och finter
 - `sw.js`: service worker för offline-läge
 - `data/kalla/lander.json`: källdatan, `data/barn.json`: länderna på Barn-nivån
 
@@ -59,7 +79,10 @@ GitHub Actions**.
 ## Kända begränsningar
 
 - Vibration fungerar inte på iPhone (Safari saknar Vibration API).
-- På iPhone hörs inget ljud när ljudlöst läge är på.
+- På iPhone sätts `navigator.audioSession.type = "playback"` så att ljudet
+  hörs trots ljudlöst läge. Det kräver iOS 16.4 eller senare.
+- Keep-alive-bruset ligger på cirka −72 dBFS. Om högtalaren ändå somnar kan
+  `KEEPALIVE_GAIN` i `js/audio.js` höjas.
 
 ## Källor och licenser
 

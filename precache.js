@@ -1,5 +1,5 @@
 // Genererad av scripts/build.mjs, redigera inte för hand.
-self.PRECACHE_VERSION = '1f5b2cf17f3a';
+self.PRECACHE_VERSION = 'bfb172d2a155';
 self.PRECACHE_FILES = [
   "css/style.css",
   "data/countries.json",
@@ -206,11 +206,12 @@ self.PRECACHE_FILES = [
   "icons/icon-maskable-512.png",
   "icons/icon.svg",
   "index.html",
-  "js/fx.js",
+  "js/audio.js",
   "js/game.js",
   "js/main.js",
   "js/order.js",
   "js/questions.js",
   "js/random.js",
+  "js/tempo.js",
   "manifest.webmanifest"
 ];

@@ -131,7 +131,8 @@ function renderSetup() {
       <details class="credits">
         <summary>Källor och licenser</summary>
         <p>Flaggor: <a href="https://github.com/lipis/flag-icons">lipis/flag-icons</a> (MIT).
-        Landsdata: <a href="https://github.com/mledoze/countries">mledoze/countries</a> (ODbL).</p>
+        Landsdata: <a href="https://github.com/mledoze/countries">mledoze/countries</a> (ODbL).
+        Musik skapad med Suno.</p>
       </details>
     </section>`;
   rendered = { screen: 'setup' };
@@ -282,6 +283,8 @@ function livesList(highlight = null) {
 function render() {
   if (game) renderGame();
   else renderSetup();
+  // Menymusik i lobbyn, vinnarlåten när bara en är kvar, annars ingen musik.
+  audio.setMusic(!game ? 'meny' : game.phase === 'over' ? 'vinnare' : null);
 }
 
 // ---------- Händelser ----------
@@ -370,10 +373,7 @@ app.addEventListener('click', (ev) => {
     }
   } else if (t.classList.contains('next')) {
     g.nextRound();
-    if (g.phase === 'over') {
-      audio.win();
-      vibrate([100, 50, 100, 50, 300]);
-    }
+    if (g.phase === 'over') vibrate([100, 50, 100, 50, 300]);
   } else if (t.classList.contains('rematch')) {
     g.newMatch();
   } else if (t.classList.contains('edit')) {
@@ -441,6 +441,12 @@ function endMatch() {
   render();
 }
 
+// Webbläsaren tillåter ljud först efter ett tryck. Lås upp vid första
+// bästa tryck, så att menymusiken kan börja redan i lobbyn.
+for (const type of ['touchend', 'click', 'keydown']) {
+  document.addEventListener(type, () => audio.unlock(), { capture: true, passive: true });
+}
+
 // Bakåt-knappen/svepet ska inte avsluta matchen av misstag: pausa i stället.
 window.addEventListener('popstate', () => {
   if (!game) return;
@@ -455,7 +461,9 @@ document.addEventListener('visibilitychange', () => {
       game.pause();
       render();
     }
+    audio.sleep();
   } else {
+    audio.wake();
     keepAwake();
   }
 });

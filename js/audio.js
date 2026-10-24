@@ -1,11 +1,12 @@
-// Ljudmotorn. Allt ljud syntetiseras med Web Audio API.
+// Ljudmotorn. Spelets ljud syntetiseras med Web Audio API. Bara musiken i
+// menyn och på vinnarskärmen är ljudfiler (ljud/).
 //
 // Högtalaren (ofta Bluetooth) bär stämningen: puls och smäll. Mobilen ger den
 // personliga återkopplingen med färg och vibration. Bluetooth fördröjer ljudet
 // 150–300 ms, så inget ljud kräver exakt synk med bilden. Undantaget är
 // smällen: allt tystnar, och bilden väntar in ljudet (se explode()).
 //
-// Kedja: källor → bussar (puls, effekter, smäll) → master → limiter → högtalare
+// Kedja: källor → bussar (puls, effekter, smäll, musik) → master → limiter → högtalare
 import { Fintes, baseBpm } from './tempo.js';
 
 const LOOKAHEAD_S = 0.12; // så långt fram pulsslagen schemaläggs
@@ -14,6 +15,12 @@ const FREEZE_S = 0.3; // tystnad före smällen
 const FALLBACK_LATENCY_S = 0.2; // om webbläsaren inte rapporterar fördröjningen
 const KEEPALIVE_GAIN = 0.002; // nästan ohörbart brus så att högtalaren inte somnar
 const STORAGE_KEY = 'passa-flaggan:ljud';
+const MUSIC_FADE_S = 0.8;
+
+export const TRACKS = {
+  meny: { url: 'ljud/meny.mp3', gain: 0.18, loop: true }, // låg, ligger i bakgrunden
+  vinnare: { url: 'ljud/vinnare.mp3', gain: 0.7, loop: false },
+};
 
 export function vibrate(pattern) {
   try {
@@ -35,6 +42,9 @@ export class AudioEngine {
     this.pulsing = false;
     this.timer = null;
     this.keepAliveSrc = null;
+    this.musicWanted = null; // vilket spår som ska spela
+    this.music = null; // { name, src, gain } som spelar nu
+    this.buffers = new Map(); // namn → Promise<AudioBuffer>
     this.onBeat = null; // anropas ungefär när ett slag hörs, med progress som argument
     if (ctx) this.build();
   }
@@ -56,6 +66,16 @@ export class AudioEngine {
     } catch {
       this.ctx = null;
     }
+    this.applyMusic();
+  }
+
+  // När appen inte syns ska inget låta, t.ex. menymusiken.
+  sleep() {
+    if (this.ready && this.ctx.state === 'running') this.ctx.suspend();
+  }
+
+  wake() {
+    if (this.ready && this.ctx.state === 'suspended') this.ctx.resume();
   }
 
   build() {
@@ -76,6 +96,7 @@ export class AudioEngine {
     this.pulseBus = this.bus();
     this.sfxBus = this.bus();
     this.boomBus = this.bus();
+    this.musicBus = this.bus();
 
     // Brusbuffert som återanvänds av alla brusljud.
     const len = ctx.sampleRate * 2;
@@ -259,10 +280,66 @@ export class AudioEngine {
     [784, 988, 1175].forEach((f, i) => this.osc('triangle', t + i * 0.05, 0.1, f, f, 0.2, this.sfxBus));
   }
 
-  win() {
-    if (!this.ready) return;
+  // ---------- Musik ----------
+
+  // Väljer vilket spår som ska spela (ett namn i TRACKS, eller null för tyst).
+  // Anropas vid varje skärmbyte; gör inget om spåret redan är valt, så att ett
+  // spår som spelats klart inte börjar om.
+  setMusic(name) {
+    if (name === this.musicWanted) return;
+    this.musicWanted = name;
+    this.applyMusic();
+  }
+
+  applyMusic() {
+    if (!this.ready) return; // spelas när unlock() har körts
+    const name = this.musicWanted;
+    if (this.music?.name === name) return;
+    this.stopMusic();
+    if (!name) return;
+    const track = TRACKS[name];
+    this.loadTrack(name)
+      .then((buffer) => {
+        if (this.musicWanted !== name || this.music?.name === name) return;
+        const src = this.ctx.createBufferSource();
+        src.buffer = buffer;
+        src.loop = track.loop;
+        const gain = this.ctx.createGain();
+        const t = this.now();
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(track.gain, t + MUSIC_FADE_S);
+        src.connect(gain).connect(this.musicBus);
+        src.start(t);
+        this.music = { name, src, gain };
+      })
+      .catch(() => {
+        // Spåret kunde inte laddas: spelet fungerar ändå utan musik.
+      });
+  }
+
+  stopMusic() {
+    if (!this.music) return;
+    const { src, gain } = this.music;
     const t = this.now();
-    [523, 659, 784, 1047].forEach((f, i) => this.osc('triangle', t + i * 0.15, 0.3, f, f, 0.25, this.sfxBus));
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(gain.gain.value, t);
+    gain.gain.linearRampToValueAtTime(0, t + MUSIC_FADE_S);
+    src.stop(t + MUSIC_FADE_S + 0.05);
+    this.music = null;
+  }
+
+  loadTrack(name) {
+    if (!this.buffers.has(name)) {
+      const p = fetch(TRACKS[name].url)
+        .then((r) => {
+          if (!r.ok) throw new Error(`${r.status}`);
+          return r.arrayBuffer();
+        })
+        .then((data) => new Promise((ok, fail) => this.ctx.decodeAudioData(data, ok, fail)));
+      p.catch(() => this.buffers.delete(name)); // försök igen nästa gång
+      this.buffers.set(name, p);
+    }
+    return this.buffers.get(name);
   }
 
   // Allt tystnar, efter FREEZE_S kommer smällen. Returnerar efter hur många

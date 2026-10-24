@@ -41,6 +41,7 @@ const files = [
   ...readdirSync(join(root, 'js')).filter((f) => f.endsWith('.js')).map((f) => `js/${f}`),
   'data/countries.json',
   ...readdirSync(join(root, 'icons')).map((f) => `icons/${f}`),
+  ...readdirSync(join(root, 'ljud')).map((f) => `ljud/${f}`),
   ...countries.map((c) => `flaggor/${c.id}.svg`),
 ].sort();
 

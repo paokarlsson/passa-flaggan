@@ -41,6 +41,10 @@ färg och vibration.
   högtalaren inte somnar och klipper början av nästa ljud.
 - En limiter sist i kedjan hindrar smällen från att klippa.
 - Ljud av/på finns på startskärmen och i pausrutan.
+- **Musik:** lobbyn har låg menymusik (`ljud/meny.mp3`, loopar) som börjar vid
+  första trycket, eftersom webbläsare inte tillåter ljud innan dess. När bara en
+  spelare är kvar spelas vinnarlåten (`ljud/vinnare.mp3`). Under matchen spelas
+  ingen musik.
 
 | Nivå | Alternativ | Länder |
 |---|---|---|
@@ -90,5 +94,7 @@ GitHub Actions**.
 ## Källor och licenser
 
 - Flaggor: [lipis/flag-icons](https://github.com/lipis/flag-icons), MIT-licens (`flaggor/LICENSE-flag-icons.txt`).
+- Musik: skapad med [Suno](https://suno.com). Vilka rättigheter som gäller beror
+  på vilket Suno-abonnemang låtarna gjordes med.
 - Landsdata: [mledoze/countries](https://github.com/mledoze/countries), ODbL.
   Befolkning från Världsbanken, kartor från Natural Earth (public domain).

@@ -1,5 +1,5 @@
 // Genererad av scripts/build.mjs, redigera inte för hand.
-self.PRECACHE_VERSION = '2e7656d70a50';
+self.PRECACHE_VERSION = '9db10e513c2e';
 self.PRECACHE_FILES = [
   "css/style.css",
   "data/countries.json",
@@ -200,6 +200,8 @@ self.PRECACHE_FILES = [
   "flaggor/za.svg",
   "flaggor/zm.svg",
   "flaggor/zw.svg",
+  "fonts/lilita-one-latin.woff2",
+  "fonts/nunito-latin.woff2",
   "icons/apple-touch-icon.png",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -208,6 +210,7 @@ self.PRECACHE_FILES = [
   "index.html",
   "js/audio.js",
   "js/game.js",
+  "js/icons.js",
   "js/main.js",
   "js/order.js",
   "js/questions.js",

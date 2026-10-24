@@ -1,7 +1,8 @@
 // Gränssnittet: ritar skärmarna utifrån spelmotorns fas och styr ljudet.
-import { Game } from './game.js';
+import { Game, RULES } from './game.js';
 import { LEVELS, levelForAge } from './questions.js';
 import { AudioEngine, vibrate } from './audio.js';
+import * as icon from './icons.js';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
@@ -34,8 +35,14 @@ const esc = (s) =>
 
 const flagImg = (c, cls = 'flag') => `<img class="${cls}" src="flaggor/${c.id}.svg" alt="Flagga" draggable="false">`;
 
+// Hjärtan för liv kvar och tomma för förlorade. Den som är ute får en etikett i stället.
 const hearts = (lives) =>
-  lives > 0 ? '❤️'.repeat(lives) : '💀';
+  lives > 0
+    ? `<span class="hearts" role="img" aria-label="${lives} liv kvar">${Array.from({ length: RULES.lives }, (_, i) =>
+        icon.heart(i < lives, 22),
+      )
+        .join('')}</span>`
+    : '<span class="out-tag">Ute</span>';
 
 function loadPlayers() {
   try {
@@ -85,7 +92,7 @@ function renderSetup() {
   app.innerHTML = `
     <section class="screen setup">
       <header class="logo">
-        <div class="logo-bomb">💣</div>
+        <div class="logo-bomb">${icon.bomb(88)}</div>
         <h1>Passa flaggan</h1>
         <p class="tagline">Gissa flaggan och skicka bomben vidare innan den smäller!</p>
       </header>
@@ -107,7 +114,7 @@ function renderSetup() {
                 )
                 .join('')}
             </div>
-            ${setupPlayers.length > MIN_PLAYERS ? `<button type="button" class="remove" aria-label="Ta bort">✕</button>` : ''}
+            ${setupPlayers.length > MIN_PLAYERS ? `<button type="button" class="remove" aria-label="Ta bort spelare">${icon.close()}</button>` : ''}
           </li>`,
           )
           .join('')}
@@ -133,7 +140,7 @@ function renderSetup() {
         <summary>Källor och licenser</summary>
         <p>Flaggor: <a href="https://github.com/lipis/flag-icons">lipis/flag-icons</a> (MIT).
         Landsdata: <a href="https://github.com/mledoze/countries">mledoze/countries</a> (ODbL).
-        Musik skapad med Suno.</p>
+        Musik skapad med Suno. Typsnitt: Lilita One och Nunito (SIL Open Font License).</p>
       </details>
     </section>`;
   rendered = { screen: 'setup' };
@@ -147,18 +154,18 @@ function renderGame() {
   if (g.phase === 'intro') {
     html = `
       <section class="screen center intro">
-        <p class="kicker">Runda ${g.round + 1}</p>
-        <div class="bomb-idle">💣</div>
-        <p class="lead"><strong class="name">${esc(holder.alias)}</strong> börjar</p>
+        <p class="chip">Runda ${g.round + 1}</p>
+        <div class="bomb-idle">${icon.bomb(150)}</div>
+        <p class="sticker lead"><strong>${esc(holder.alias)}</strong> börjar</p>
         <p class="hint">Sätt er i en ring. Tryck när alla är redo.</p>
-        <button type="button" class="btn big go">Tänd stubinen 🔥</button>
+        <button type="button" class="btn big go">Tänd stubinen!</button>
         ${livesList()}
       </section>`;
   } else if (g.phase === 'handover') {
     html = `
       <section class="screen center handover">
-        <p class="kicker">Skicka till</p>
-        <p class="giant name">${esc(holder.alias)}</p>
+        <p class="chip">Skicka till</p>
+        <p class="sticker giant">${esc(holder.alias)}</p>
         <button type="button" class="btn big ready">Jag är ${esc(holder.alias)}, visa frågan!</button>
       </section>`;
   } else if (g.phase === 'question' && g.current.type === 'frikort') {
@@ -166,7 +173,7 @@ function renderGame() {
       <section class="screen center frikort">
         ${topBar()}
         <div class="card">
-          <div class="card-icon">🎟️</div>
+          <div class="card-icon">${icon.ticket(140)}</div>
           <p class="card-title">Frikort!</p>
           <p class="hint">Du slipper svara. Skicka bomben vidare direkt.</p>
         </div>
@@ -179,7 +186,10 @@ function renderGame() {
       html = `
         <section class="screen question">
           ${topBar()}
-          <div class="prompt">${flagImg(q.answer, 'flag hero')}</div>
+          <div class="prompt">
+            <div class="flag-sticker">${flagImg(q.answer, 'flag hero')}</div>
+            <p class="ask">Vilket land?</p>
+          </div>
           <div class="answers names n${n}">
             ${q.options.map((o, i) => `<button type="button" class="answer" data-i="${i}">${esc(o.namn)}</button>`).join('')}
           </div>
@@ -189,7 +199,7 @@ function renderGame() {
         <section class="screen question">
           ${topBar()}
           <div class="prompt text">
-            <p class="kicker">Vilken flagga har</p>
+            <p class="ask">Vilken flagga har</p>
             <p class="country">${esc(q.answer.namn)}?</p>
           </div>
           <div class="answers flags n${n}">
@@ -203,22 +213,28 @@ function renderGame() {
     const q = e.question;
     let reveal = '';
     if (e.duringHandover) {
-      reveal = `<p class="hint">Bomben small medan mobilen skickades!</p>`;
+      reveal = `<p class="sticker note">Bomben small medan mobilen skickades!</p>`;
     } else if (q) {
       reveal = `
         <div class="reveal">
           ${flagImg(q.answer)}
-          <p>${q.kind === 'flagga' ? 'Flaggan var' : 'Rätt flagga för'} <strong>${esc(q.answer.namn)}</strong></p>
+          <div>
+            <p class="reveal-label">${q.kind === 'flagga' ? 'Flaggan var' : 'Rätt flagga för'}</p>
+            <p class="reveal-name">${esc(q.answer.namn)}</p>
+          </div>
         </div>`;
     }
     const button =
       g.winner !== null
-        ? `<button type="button" class="btn big next">Se vinnaren 🏆</button>`
-        : `<button type="button" class="btn big next">${e.out ? 'Starta nästa runda' : `${esc(loser.alias)}: starta nästa runda`}</button>`;
+        ? `<button type="button" class="btn big next">Se vinnaren!</button>`
+        : `<button type="button" class="btn big next">${e.out ? 'Starta nästa runda' : `${esc(loser.alias)}, kör igen!`}</button>`;
     html = `
       <section class="screen center exploded">
-        <p class="boom">PANG!</p>
-        <p class="lead"><strong class="name">${esc(loser.alias)}</strong> ${e.out ? 'är ute!' : 'förlorade ett liv'}</p>
+        <div class="boom">${icon.burst()}<span>PANG!</span></div>
+        <div class="sticker loser">
+          <p class="loser-name">${esc(loser.alias)}</p>
+          <p>${e.out ? 'är ute!' : 'tappade ett hjärta'}</p>
+        </div>
         ${reveal}
         ${livesList(e.loser)}
         ${button}
@@ -228,9 +244,9 @@ function renderGame() {
     html = `
       <section class="screen center over">
         <canvas class="confetti"></canvas>
-        <p class="kicker">Vinnare</p>
-        <div class="trophy">🏆</div>
-        <p class="giant name">${esc(w.alias)}</p>
+        <p class="chip">Vinnare</p>
+        <div class="trophy">${icon.trophy(150)}</div>
+        <p class="sticker giant">${esc(w.alias)}</p>
         <button type="button" class="btn big rematch">Revansch</button>
         <button type="button" class="btn ghost edit">Ändra spelare</button>
       </section>`;
@@ -240,7 +256,7 @@ function renderGame() {
     html += `
       <div class="overlay">
         <div class="dialog">
-          <p class="lead">Pausat</p>
+          <p class="sticker lead">Pausat</p>
           <button type="button" class="btn big resume">Fortsätt</button>
           ${soundToggle()}
           <button type="button" class="btn ghost quit">Avsluta match</button>
@@ -256,16 +272,16 @@ function renderGame() {
 
 function soundToggle() {
   return `<button type="button" class="btn ghost sound" aria-pressed="${audio.enabled}">
-    ${audio.enabled ? '🔊 Ljud på' : '🔇 Ljud av'}</button>`;
+    ${icon.speaker(audio.enabled)} ${audio.enabled ? 'Ljud på' : 'Ljud av'}</button>`;
 }
 
 function topBar() {
   const p = game.player();
   return `
     <header class="topbar">
-      <span class="holder">💣 ${esc(p.alias)}</span>
-      <span class="lives">${hearts(p.lives)}</span>
-      <button type="button" class="pause" aria-label="Pausa">⏸</button>
+      <span class="holder"><strong>${esc(p.alias)}</strong> har bomben</span>
+      ${hearts(p.lives)}
+      <button type="button" class="pause" aria-label="Pausa">${icon.pause()}</button>
     </header>`;
 }
 
@@ -274,8 +290,8 @@ function livesList(highlight = null) {
     <ul class="lives-list">
       ${game.players
         .map(
-          (p) => `<li class="${p.lives === 0 ? 'out' : ''} ${p.id === highlight ? 'hit' : ''}">
-            <span>${esc(p.alias)}</span><span>${hearts(p.lives)}</span></li>`,
+          (p) => `<li class="tile ${p.lives === 0 ? 'out' : ''} ${p.id === highlight ? 'hit' : ''}">
+            <span class="tile-name">${esc(p.alias)}</span>${hearts(p.lives)}</li>`,
         )
         .join('')}
     </ul>`;
@@ -284,6 +300,8 @@ function livesList(highlight = null) {
 function render() {
   if (game) renderGame();
   else renderSetup();
+  // Bakgrundsfärgen följer skärmen (t.ex. korallröd vid smällen).
+  document.body.dataset.screen = game ? game.phase : 'setup';
   // Menymusik i lobbyn, vinnarlåten när bara en är kvar, annars ingen musik.
   audio.setMusic(!game ? 'meny' : game.phase === 'over' ? 'vinnare' : null);
 }

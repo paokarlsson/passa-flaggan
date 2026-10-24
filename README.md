@@ -110,6 +110,9 @@ GitHub Actions**.
 ## Källor och licenser
 
 - Flaggor: [lipis/flag-icons](https://github.com/lipis/flag-icons), MIT-licens (`flaggor/LICENSE-flag-icons.txt`).
+- Typsnitt: [Lilita One](https://fonts.google.com/specimen/Lilita+One) och
+  [Nunito](https://fonts.google.com/specimen/Nunito), SIL Open Font License
+  (`fonts/OFL-*.txt`). Ligger lokalt så att de fungerar offline.
 - Musik: skapad med [Suno](https://suno.com). Vilka rättigheter som gäller beror
   på vilket Suno-abonnemang låtarna gjordes med.
 - Landsdata: [mledoze/countries](https://github.com/mledoze/countries), ODbL.

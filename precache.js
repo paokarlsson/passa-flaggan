@@ -1,5 +1,5 @@
 // Genererad av scripts/build.mjs, redigera inte för hand.
-self.PRECACHE_VERSION = 'bfb172d2a155';
+self.PRECACHE_VERSION = 'ee68fbe3c2c2';
 self.PRECACHE_FILES = [
   "css/style.css",
   "data/countries.json",

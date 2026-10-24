@@ -6,8 +6,13 @@ import { pick, randInt } from './random.js';
 
 export const RULES = {
   lives: 3,
-  fuseMinMs: 20000,
-  fuseMaxMs: 60000,
+  fuseMinMs: 120000,
+  fuseMaxMs: 240000,
+  // I början tickar bomben lugnt i några varv innan tempot börjar öka. Det
+  // lugna läget slutar senast när halva tiden har gått, så att det alltid
+  // hinner accelerera före smällen.
+  calmLaps: 2,
+  calmMaxShare: 0.5,
   wrongPenaltyMs: 3000,
   lockMs: 1000,
   frikortChance: 0.1,
@@ -60,6 +65,7 @@ export class Game {
     this.fuseMs = randInt(this.rng, this.rules.fuseMinMs, this.rules.fuseMaxMs);
     this.startedAt = this.clock();
     this.deadline = this.startedAt + this.fuseMs;
+    this.calmEndedAt = null;
     this.order.reset(this.alive().map((p) => p.id), this.holder);
     this.lockedUntil = 0;
     this.serve();
@@ -108,6 +114,7 @@ export class Game {
   passOn() {
     // Turen flyttas direkt: smäller det under överlämningen är det mottagaren som förlorar.
     this.holder = this.order.next(this.alive().map((p) => p.id), this.holder);
+    this.updateCalm();
     this.phase = 'handover';
     this.current = null;
   }
@@ -122,10 +129,27 @@ export class Game {
     return this.deadline - this.now();
   }
 
-  // Hur långt bomben har brunnit, 0–1. Används till tickande och färg.
+  isCalm() {
+    return this.calmEndedAt === null;
+  }
+
+  updateCalm() {
+    if (!this.isCalm()) return;
+    const latest = this.startedAt + this.fuseMs * this.rules.calmMaxShare;
+    if (this.order.laps >= this.rules.calmLaps || this.now() >= latest) {
+      this.calmEndedAt = Math.min(this.now(), latest);
+    }
+  }
+
+  // Hur långt det har gått mot smällen efter det lugna läget, 0–1. Styr
+  // pulsens tempo: 0 hela det lugna läget, sedan jämnt upp till 1 vid smällen.
+  // Ett fel svar flyttar smällen närmare, så värdet hoppar framåt.
   progress() {
     if (this.phase !== 'question' && this.phase !== 'handover') return 0;
-    return Math.min(1, Math.max(0, 1 - this.remainingMs() / this.fuseMs));
+    if (this.isCalm()) return 0;
+    const span = this.deadline - this.calmEndedAt;
+    if (span <= 0) return 1;
+    return Math.min(1, Math.max(0, (this.now() - this.calmEndedAt) / span));
   }
 
   // Anropas ofta av gränssnittet. Returnerar true om bomben smällde nu.
@@ -136,6 +160,7 @@ export class Game {
       this.explode();
       return true;
     }
+    this.updateCalm();
     if (this.wrongPending && !this.isLocked()) {
       this.wrongPending = false;
       this.serve();
@@ -181,6 +206,8 @@ export class Game {
     const pausedFor = this.clock() - this.paused.at;
     this.deadline += pausedFor;
     this.lockedUntil += pausedFor;
+    this.startedAt += pausedFor;
+    if (this.calmEndedAt !== null) this.calmEndedAt += pausedFor;
     this.paused = null;
   }
 }

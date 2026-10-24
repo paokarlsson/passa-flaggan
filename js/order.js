@@ -6,16 +6,19 @@ export class TurnOrder {
   constructor(rng) {
     this.rng = rng;
     this.lap = [];
+    this.laps = 0; // hela varv som har gått i rundan
   }
 
   // Ny runda: den som startar har redan fått sin tur i det här varvet.
   reset(alive, starter) {
     this.lap = shuffle(this.rng, alive.filter((id) => id !== starter));
+    this.laps = 0;
   }
 
   next(alive, current) {
     this.lap = this.lap.filter((id) => alive.includes(id) && id !== current);
     if (this.lap.length === 0) {
+      this.laps++;
       this.lap = shuffle(this.rng, alive);
       // Nytt varv får inte börja med den som håller mobilen nu.
       if (this.lap[0] === current && this.lap.length > 1) {

@@ -118,7 +118,8 @@ function renderSetup() {
       <details class="rules">
         <summary>Så spelar man</summary>
         <ul>
-          <li>Alla börjar med 3 liv. Bomben har en dold timer på 20–60 sekunder.</li>
+          <li>Alla börjar med 3 liv. Bomben har en dold timer på 2–4 minuter.</li>
+          <li>De första varven tickar bomben lugnt. Sedan går det allt fortare.</li>
           <li>Svara rätt så blinkar skärmen grönt. Skicka mobilen till den vars namn visas.</li>
           <li>Fel svar ger 1 sekunds spärr och drar 3 sekunder från bomben.</li>
           <li>Ibland får man ett frikort och kan skicka vidare direkt.</li>

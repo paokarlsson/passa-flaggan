@@ -253,3 +253,66 @@ test('utslagna spelare får aldrig mobilen', () => {
     game.nextRound();
   }
 });
+
+test('rundan varar 2–4 minuter', () => {
+  for (let seed = 1; seed < 50; seed++) {
+    const { game } = setup(trio, { seed });
+    game.startRound();
+    assert.ok(game.fuseMs >= 120000 && game.fuseMs <= 240000);
+  }
+});
+
+test('pulsen är lugn de två första varven och ökar sedan mot smällen', () => {
+  const { game, advance } = setup(trio, { rules: { frikortChance: 0 } });
+  game.startRound();
+  // Två hela varv med tre spelare: starten plus fem överlämningar.
+  for (let i = 0; i < 5; i++) {
+    advance(1000);
+    assert.equal(game.progress(), 0, `lugnt efter ${i + 1} överlämningar`);
+    answerCorrectly(game);
+    game.ready();
+  }
+  advance(1000);
+  answerCorrectly(game); // första överlämningen i tredje varvet
+  assert.ok(!game.isCalm());
+  assert.equal(game.progress(), 0);
+  advance(5000);
+  const p1 = game.progress();
+  advance(5000);
+  const p2 = game.progress();
+  assert.ok(p1 > 0 && p2 > p1, 'ökar efter det lugna läget');
+  advance(game.remainingMs() - 1);
+  assert.ok(game.progress() > 0.99);
+});
+
+test('det lugna läget slutar senast halvvägs', () => {
+  const { game, advance } = setup(trio, { rules: { frikortChance: 0 } });
+  game.startRound();
+  advance(game.fuseMs * 0.5 - 10);
+  assert.ok(game.isCalm());
+  advance(20);
+  assert.ok(!game.isCalm());
+  advance(game.fuseMs * 0.25);
+  assert.ok(Math.abs(game.progress() - 0.5) < 0.01);
+});
+
+test('fel svar får tempot att hoppa framåt', () => {
+  const { game, advance } = setup(trio, { rules: { frikortChance: 0 } });
+  game.startRound();
+  advance(game.fuseMs * 0.6);
+  const before = game.progress();
+  const q = game.current;
+  game.answer((q.correctIndex + 1) % q.options.length);
+  assert.ok(game.progress() > before);
+});
+
+test('paus påverkar inte tempot', () => {
+  const { game, advance } = setup(trio);
+  game.startRound();
+  advance(game.fuseMs * 0.7);
+  const before = game.progress();
+  game.pause();
+  advance(60000);
+  game.resume();
+  assert.ok(Math.abs(game.progress() - before) < 1e-9);
+});

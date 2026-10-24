@@ -12,7 +12,9 @@ offline när det har öppnats en gång.
 
 - 2–8 spelare med alias och ålder. Åldern föreslår en nivå (under 9 Barn,
   9–14 Normal, 15+ Nörd) som går att ändra.
-- Alla har 3 liv. Bomben har en dold timer på 20–60 sekunder.
+- Alla har 3 liv. Bomben har en dold timer på 2–4 minuter.
+- De två första varven tickar pulsen lugnt. Sedan ökar tempot fram till smällen.
+  Det lugna läget slutar senast när halva tiden har gått.
 - Frågorna växlar: visa flaggan och välj landet, eller visa landet och välj flaggan.
 - Rätt svar: nästa spelares namn visas och mobilen skickas. Timern tickar under
   överlämningen, och smäller det då är det mottagaren som förlorar livet.
@@ -27,7 +29,8 @@ stor Bluetooth-högtalare men mixat så att det hörs även i mobilens egen
 högtalare. Högtalaren bär stämningen och mobilen ger personlig återkoppling med
 färg och vibration.
 
-- **Puls:** ett hjärtslag som går från 60 till 180 slag per minut under rundan.
+- **Puls:** ett hjärtslag som ligger lugnt på 60 slag per minut de första
+  varven och sedan ökar till 180 slag per minut fram till smällen.
   Ibland saktar det in en stund (en fint) så att man inte kan räkna ut timern.
   Ett fel svar får tempot att hoppa upp direkt.
 - **Rätt och fel:** en kort swoosh och ett kort surr, under 200 ms.

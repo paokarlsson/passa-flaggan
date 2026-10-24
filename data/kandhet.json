@@ -1,0 +1,38 @@
+{
+  "beskrivning": "Hur kända länderna och deras flaggor är, ur ett svenskt perspektiv. Grupp 1 är mest känd, grupp 5 minst. Svårighetstrappan börjar med grupp 1 och lägger till svårare grupper för varje runda. Flytta länder fritt mellan grupperna och kör sedan `npm run build`. Varje land måste finnas i exakt en grupp.",
+  "grupper": {
+    "1": [
+      "se", "no", "dk", "fi", "is", "gb", "fr", "de", "it", "es", "pt", "nl", "ch", "gr", "pl", "ua",
+      "us", "ca", "mx", "br", "ar", "jm",
+      "jp", "cn", "kr", "in", "tr", "il",
+      "au", "za"
+    ],
+    "2": [
+      "be", "at", "ie", "ru", "hr", "ee", "lv", "lt", "cz", "hu", "ro",
+      "cu", "cl", "co", "pe", "uy",
+      "eg", "ma", "ng", "ke", "gh",
+      "th", "vn", "np", "sa", "ph", "id", "sg", "kp", "ir",
+      "nz"
+    ],
+    "3": [
+      "bg", "rs", "sk", "si", "ba", "al", "mk", "me", "xk", "by", "md", "cy", "mt", "lu", "mc", "li", "ad", "sm", "va",
+      "ge", "am", "az", "kz", "iq", "sy", "ps", "lb", "jo", "kw", "qa", "ae", "pk", "bd", "lk", "my", "mn", "af", "tw",
+      "tn", "dz", "ly", "et", "sn", "cm", "ci", "tz", "ug",
+      "ve", "ec", "bo", "py", "do", "pa", "cr", "ht", "bs", "tt",
+      "fj", "pg"
+    ],
+    "4": [
+      "uz", "tm", "tj", "kg", "om", "ye", "mm", "la", "kh", "bt", "mv",
+      "ao", "bw", "mz", "na", "zw", "zm", "mw", "rw", "sd", "ss", "so", "mg", "mu", "sc",
+      "ml", "ne", "td", "lr", "sl", "gn", "cd", "cg", "ga",
+      "gt", "hn", "sv", "ni", "bz", "gy", "sr", "bb",
+      "ws", "to"
+    ],
+    "5": [
+      "bh", "bn", "tl",
+      "bi", "er", "dj", "mr", "bf", "bj", "tg", "gw", "gm", "cf", "gq", "ls", "sz", "km", "st", "cv",
+      "dm", "gd", "lc", "vc", "kn", "ag",
+      "ki", "mh", "fm", "nr", "pw", "sb", "tv", "vu"
+    ]
+  }
+}

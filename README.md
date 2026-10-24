@@ -46,6 +46,52 @@ färg och vibration.
   spelare är kvar spelas vinnarlåten (`ljud/vinnare.mp3`). Under matchen spelas
   ingen musik.
 
+### Svårighetstrappa
+
+Svårigheten följer rundan och är samma för alla. Trappan har lika många steg
+som matchen kan ha rundor (liv × spelare − 1): 5 steg med 2 spelare, 8 med 3
+och så vidare. Revansch börjar om från första steget.
+
+- **Kända länder först.** Alla länder är indelade i fem kändhetsgrupper i
+  `data/kandhet.json`. Första rundan tar bara grupp 1 (t.ex. Sverige, USA,
+  Japan), och sedan flyttas fönstret uppåt till grupp 3–5 på sista steget.
+- **Olika flaggor först.** Felalternativen väljs efter hur lika flaggorna ser
+  ut: helt olika flaggor i början, förväxlingsbara på slutet. Likheten räknas
+  ut från flaggornas färger i ett rutnät (`data/flaggfarger.json`, tas fram
+  med `scripts/flaggfarger.cjs`).
+
+Spelarens nivå styr bara antalet alternativ:
+
+| Nivå | Alternativ |
+|---|---|
+| Barn | 3 |
+| Normal | 4 |
+| Nörd | 6 |
+
+## Ljud
+
+Allt ljud syntetiseras med Web Audio API, utan ljudfiler. Det är gjort för en
+stor Bluetooth-högtalare men mixat så att det hörs även i mobilens egen
+högtalare. Högtalaren bär stämningen och mobilen ger personlig återkoppling med
+färg och vibration.
+
+- **Puls:** ett hjärtslag som ligger lugnt på 60 slag per minut de första
+  varven och sedan ökar till 180 slag per minut fram till smällen.
+  Ibland saktar det in en stund (en fint) så att man inte kan räkna ut timern.
+  Ett fel svar får tempot att hoppa upp direkt.
+- **Rätt och fel:** en kort swoosh och ett kort surr, under 200 ms.
+- **Smällen:** allt tystnar och skärmen fryser i cirka 0,3 s plus
+  Bluetooth-fördröjningen (`outputLatency`, annars 0,2 s). Sedan kommer
+  smällen i ljud och bild samtidigt.
+- **Keep-alive:** ett nästan ohörbart brus under hela matchen, så att
+  högtalaren inte somnar och klipper början av nästa ljud.
+- En limiter sist i kedjan hindrar smällen från att klippa.
+- Ljud av/på finns på startskärmen och i pausrutan.
+- **Musik:** lobbyn har låg menymusik (`ljud/meny.mp3`, loopar) som börjar vid
+  första trycket, eftersom webbläsare inte tillåter ljud innan dess. När bara en
+  spelare är kvar spelas vinnarlåten (`ljud/vinnare.mp3`). Under matchen spelas
+  ingen musik.
+
 | Nivå | Alternativ | Länder |
 |---|---|---|
 | Barn | 3 | 40 kända länder, se `data/barn.json` |
@@ -75,7 +121,7 @@ filer som sparas för offline-läge, med en version som ändras när innehållet
 - `js/audio.js`: ljudmotorn (puls, effekter, smäll, keep-alive) och vibration
 - `js/tempo.js`: pulsens tempo och finter
 - `sw.js`: service worker för offline-läge
-- `data/kalla/lander.json`: källdatan, `data/barn.json`: länderna på Barn-nivån
+- `data/kalla/lander.json`: källdatan, `data/kandhet.json`: kändhetsgrupperna
 
 ## Publicering
 

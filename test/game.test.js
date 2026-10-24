@@ -2,7 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Game, RULES } from '../js/game.js';
-import { QuestionSource, LEVELS, levelForAge } from '../js/questions.js';
+import {
+  QuestionSource,
+  LEVELS,
+  levelForAge,
+  maxRounds,
+  difficultyForRound,
+  tierRange,
+  flagDistance,
+} from '../js/questions.js';
 import { TurnOrder } from '../js/order.js';
 
 const countries = JSON.parse(readFileSync(new URL('../data/countries.json', import.meta.url)));
@@ -49,42 +57,98 @@ test('ålder ger förvald nivå', () => {
   assert.equal(levelForAge(NaN), 'normal');
 });
 
-test('datan har rätt storlek per nivå', () => {
+test('alla länder har en kändhetsgrupp och ett färgfingeravtryck', () => {
   assert.equal(countries.length, 197);
-  assert.equal(countries.filter((c) => c.fn).length, 193);
-  assert.equal(countries.filter((c) => c.barn).length, 40);
+  for (const c of countries) {
+    assert.ok(c.kand >= 1 && c.kand <= 5, c.id);
+    assert.equal(c.farg.length, 72, c.id);
+  }
 });
 
-test('frågor har rätt antal unika alternativ och hämtas ur rätt pool', () => {
+test('trappan har lika många steg som matchen kan ha rundor', () => {
+  assert.equal(maxRounds(2, 3), 5);
+  assert.equal(maxRounds(3, 3), 8);
+  assert.equal(maxRounds(8, 3), 23);
+  assert.equal(difficultyForRound(1, 5), 0);
+  assert.equal(difficultyForRound(3, 5), 0.5);
+  assert.equal(difficultyForRound(5, 5), 1);
+  assert.deepEqual(tierRange(0), [1, 1]);
+  assert.deepEqual(tierRange(0.5), [1, 3]);
+  assert.deepEqual(tierRange(1), [3, 5]);
+});
+
+const ask = (qs, options, difficulty, kind = 'flagga') => qs.next({ options, difficulty, kind });
+
+test('frågor har rätt antal unika alternativ', () => {
   const qs = new QuestionSource(countries, seeded(2));
-  for (const level of Object.keys(LEVELS)) {
-    for (let i = 0; i < 300; i++) {
-      const q = qs.next(level, 'flagga');
-      assert.equal(q.options.length, LEVELS[level].options);
-      assert.equal(new Set(q.options.map((o) => o.id)).size, q.options.length);
-      assert.equal(q.options[q.correctIndex], q.answer);
-      for (const o of q.options) {
-        if (level === 'barn') assert.ok(o.barn, `${o.id} är inte en barnflagga`);
-        if (level === 'normal') assert.ok(o.fn, `${o.id} är inte FN-medlem`);
+  for (const { options } of Object.values(LEVELS)) {
+    for (const difficulty of [0, 0.25, 0.5, 0.75, 1]) {
+      for (let i = 0; i < 100; i++) {
+        const q = ask(qs, options, difficulty);
+        assert.equal(q.options.length, options);
+        assert.equal(new Set(q.options.map((o) => o.id)).size, options);
+        assert.equal(q.options[q.correctIndex], q.answer);
       }
     }
   }
 });
 
-test('identiska flaggor visas aldrig i samma fråga', () => {
+test('lätt: kända länder och flaggor som inte liknar varandra', () => {
   const qs = new QuestionSource(countries, seeded(3));
+  for (let i = 0; i < 300; i++) {
+    const q = ask(qs, 6, 0);
+    assert.equal(q.answer.kand, 1);
+    for (const o of q.options) assert.ok(o.kand <= 2, `${o.id} är för okänt`);
+    assert.ok(!q.answer.liknar.some((id) => q.options.some((o) => o.id === id)), 'inga förväxlingsbara');
+  }
+});
+
+test('svårt: mindre kända länder och flaggor som liknar varandra', () => {
+  const qs = new QuestionSource(countries, seeded(4));
+  let easy = 0;
+  let hard = 0;
+  const qsEasy = new QuestionSource(countries, seeded(5));
+  for (let i = 0; i < 300; i++) {
+    const q = ask(qs, 4, 1);
+    assert.ok(q.answer.kand >= 3);
+    for (const o of q.options) if (o !== q.answer) hard += flagDistance(q.answer, o);
+    const e = ask(qsEasy, 4, 0);
+    for (const o of e.options) if (o !== e.answer) easy += flagDistance(e.answer, o);
+  }
+  assert.ok(hard < easy / 2, `felalternativen liknar rätt svar mer när det är svårt (${hard} mot ${easy})`);
+});
+
+test('identiska flaggor visas aldrig i samma fråga', () => {
+  const qs = new QuestionSource(countries, seeded(6));
   for (let i = 0; i < 3000; i++) {
-    const ids = qs.next('nord', 'namn').options.map((o) => o.id);
+    const ids = ask(qs, 6, 1, 'namn').options.map((o) => o.id);
     assert.ok(!(ids.includes('id') && ids.includes('mc')));
     assert.ok(!(ids.includes('td') && ids.includes('ro')));
   }
 });
 
-test('samma land kommer inte igen förrän leken är slut', () => {
-  const qs = new QuestionSource(countries, seeded(4));
-  const seen = new Set();
-  for (let i = 0; i < 40; i++) seen.add(qs.next('barn', 'flagga').answer.id);
-  assert.equal(seen.size, 40);
+test('samma land kommer inte igen direkt', () => {
+  const qs = new QuestionSource(countries, seeded(7));
+  const seen = [];
+  for (let i = 0; i < 19; i++) seen.push(ask(qs, 3, 0).answer.id);
+  assert.equal(new Set(seen).size, seen.length);
+});
+
+test('matchen blir svårare för varje runda', () => {
+  const { game, advance } = setup(trio, { seed: 8 });
+  const levels = [];
+  while (game.phase !== 'over') {
+    game.startRound();
+    levels.push(game.difficulty());
+    if (game.current.type === 'fraga') assert.equal(game.current.difficulty, game.difficulty());
+    advance(RULES.fuseMaxMs);
+    game.nextRound();
+  }
+  assert.equal(levels[0], 0);
+  for (let i = 1; i < levels.length; i++) assert.ok(levels[i] > levels[i - 1]);
+  game.newMatch();
+  game.startRound();
+  assert.equal(game.difficulty(), 0, 'revansch börjar om från början');
 });
 
 test('turordning: alla får en tur per varv, aldrig samma två gånger i rad', () => {

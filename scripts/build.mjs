@@ -67,5 +67,12 @@ writeFileSync(
     `self.PRECACHE_FILES = ${JSON.stringify(files, null, 0).replace(/","/g, '",\n  "').replace('["', '[\n  "').replace('"]', '"\n]')};\n`,
 );
 
+// Versionen skrivs in i sw.js så att filen ändras och webbläsaren hittar uppdateringen.
+const swPath = join(root, 'sw.js');
+const sw = readFileSync(swPath, 'utf8');
+const swNew = sw.replace(/const VERSION = '[^']*';/, `const VERSION = '${version}';`);
+if (swNew === sw && !sw.includes(`'${version}'`)) throw new Error('sw.js saknar raden const VERSION');
+writeFileSync(swPath, swNew);
+
 const perGrupp = [1, 2, 3, 4, 5].map((g) => countries.filter((c) => c.kand === g).length).join('/');
 console.log(`${countries.length} länder (kändhetsgrupper ${perGrupp}), ${files.length} filer i precache, version ${version}`);

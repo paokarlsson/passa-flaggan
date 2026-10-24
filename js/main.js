@@ -298,6 +298,7 @@ function livesList(highlight = null) {
 }
 
 function render() {
+  reloadIfIdle();
   if (game) renderGame();
   else renderSetup();
   // Bakgrundsfärgen följer skärmen (t.ex. korallröd vid smällen).
@@ -568,12 +569,40 @@ function startConfetti(canvas) {
   draw();
 }
 
+// ---------- Uppdateringar ----------
+
+// En ny version installeras i bakgrunden av service workern. När den tar över
+// laddas sidan om, men bara på startskärmen: en pågående match avbryts aldrig.
+let updateReady = false;
+
+function watchForUpdates() {
+  if (!('serviceWorker' in navigator)) return;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker
+    .register('sw.js', { updateViaCache: 'none' })
+    .then((reg) => {
+      // En app på hemskärmen startas sällan om, bara tas fram igen. Leta efter
+      // ny version varje gång den syns.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    })
+    .catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) return; // första installationen, sidan är redan aktuell
+    updateReady = true;
+    reloadIfIdle();
+  });
+}
+
+function reloadIfIdle() {
+  if (updateReady && !game) location.reload();
+}
+
 // ---------- Start ----------
 
 async function init() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  watchForUpdates();
   try {
     countries = await (await fetch('data/countries.json')).json();
   } catch {

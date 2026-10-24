@@ -25,7 +25,7 @@ jobs:
           node-version: 22
       - run: npm run build
       - name: Genererade filer ska vara incheckade
-        run: git diff --exit-code -- data/countries.json precache.js
+        run: git diff --exit-code -- data/countries.json precache.js sw.js
       - run: npm test
 
   deploy:

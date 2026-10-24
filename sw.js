@@ -1,13 +1,19 @@
 // Service worker: sparar hela spelet så att det fungerar offline.
-importScripts('precache.js');
+//
+// VERSION skrivs av `npm run build` och ändras när något innehåll ändras. Då
+// skiljer sig sw.js från förra versionen, och webbläsaren installerar den nya.
+const VERSION = '1516a5e8a3db';
+importScripts(`precache.js?v=${VERSION}`);
 
-const CACHE = `passa-flaggan-${self.PRECACHE_VERSION}`;
+const CACHE = `passa-flaggan-${VERSION}`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(['./', ...self.PRECACHE_FILES]))
+      // cache: 'reload' hämtar från servern och inte ur webbläsarens vanliga
+      // cache, som annars kan ge filer från förra versionen.
+      .then((cache) => cache.addAll(['./', ...self.PRECACHE_FILES].map((url) => new Request(url, { cache: 'reload' }))))
       .then(() => self.skipWaiting()),
   );
 });

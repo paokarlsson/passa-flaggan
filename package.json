@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test",
-    "start": "python3 -m http.server 8000"
+    "test": "npm run check --silent && node --test",
+    "start": "python3 -m http.server 8000",
+    "check": "for f in js/*.js sw.js scripts/*.mjs scripts/*.cjs; do node --check \"$f\" || exit 1; done"
   }
 }

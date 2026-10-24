@@ -1,0 +1,10 @@
+{
+  "name": "passa-flaggan",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "start": "python3 -m http.server 8000"
+  }
+}

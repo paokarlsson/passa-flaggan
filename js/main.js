@@ -9,6 +9,8 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
 const STORAGE_KEY = 'passa-flaggan:spelare';
 const CATEGORY_KEY = 'passa-flaggan:kategorier';
+const MATCH_KEY = 'passa-flaggan:match';
+const SAVE_INTERVAL_MS = 1000;
 // Spärr mot att någon i farten råkar trycka på nästa skärms knapp.
 const HANDOVER_GUARD_MS = 500;
 const EXPLOSION_GUARD_MS = 1500;
@@ -25,6 +27,7 @@ let rendered = null; // vad som senast ritades, för att veta när skärmen beh�
 let freezing = false; // pausen mellan att bomben smäller och att smällen visas
 let guardUntil = 0;
 let wakeLock = null;
+let savedAt = 0;
 
 const audio = new AudioEngine();
 // Mobilen vibrerar i takt med pulsen, starkare mot slutet.
@@ -85,6 +88,25 @@ function saveCategories() {
     localStorage.setItem(CATEGORY_KEY, JSON.stringify(setupCategories));
   } catch {
     // Inte viktigt om det inte går att spara.
+  }
+}
+
+// Matchen sparas så att den kan fortsätta om appen eller webbläsaren stängs.
+function saveMatch() {
+  savedAt = performance.now();
+  try {
+    if (game) localStorage.setItem(MATCH_KEY, JSON.stringify(game.snapshot()));
+    else localStorage.removeItem(MATCH_KEY);
+  } catch {
+    // Ingen lagring: matchen går inte att fortsätta, men spelet fungerar.
+  }
+}
+
+function loadMatch() {
+  try {
+    return Game.restore(JSON.parse(localStorage.getItem(MATCH_KEY)), { countries });
+  } catch {
+    return null;
   }
 }
 
@@ -392,6 +414,7 @@ function render() {
   document.body.dataset.screen = game ? game.phase : 'setup';
   // Menymusik i lobbyn, vinnarlåten när bara en är kvar, annars ingen musik.
   audio.setMusic(!game ? 'meny' : game.phase === 'over' ? 'vinnare' : null);
+  saveMatch();
 }
 
 // ---------- Händelser ----------
@@ -458,6 +481,9 @@ app.addEventListener('click', (ev) => {
   }
 
   audio.unlock();
+  // En match som fortsätter efter att appen stängts har inte startat ljud och skärmlås än.
+  audio.keepAlive();
+  keepAwake();
   if (performance.now() < guardUntil) return;
   const g = game;
 
@@ -597,7 +623,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     if (game) {
       game.pause();
-      render();
+      render(); // sparar också matchen
     }
     audio.sleep();
   } else {
@@ -621,6 +647,8 @@ function loop() {
   const live = (g.phase === 'question' || g.phase === 'handover') && !g.paused;
   if (live) audio.setProgress(g.progress());
   audio.setPulse(live);
+  // Under rundan ändras timern hela tiden: spara den regelbundet.
+  if (live && performance.now() - savedAt > SAVE_INTERVAL_MS) saveMatch();
 }
 
 // Ritar om när spelets läge har ändrats. Bomben kan smälla både i loopen och
@@ -727,8 +755,22 @@ async function init() {
     app.innerHTML = '<p class="loading">Kunde inte ladda länderna. Ladda om sidan.</p>';
     return;
   }
+  // Fortsätt en match som pågick när appen stängdes.
+  game = loadMatch();
+  if (game) {
+    pendingCategories = [...game.roundCategories];
+    history.pushState({ game: true }, '');
+  }
   render();
   requestAnimationFrame(loop);
 }
+
+// Sista chansen att spara när sidan stängs.
+window.addEventListener('pagehide', () => {
+  if (game) {
+    game.pause();
+    saveMatch();
+  }
+});
 
 init();

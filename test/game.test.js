@@ -380,3 +380,59 @@ test('paus påverkar inte tempot', () => {
   game.resume();
   assert.ok(Math.abs(game.progress() - before) < 1e-9);
 });
+
+test('en pågående runda kan sparas och fortsätta pausad', () => {
+  let time = 0;
+  const clock = () => time;
+  const game = new Game({ players: trio, countries, rng: seeded(11), clock, categories: ['flaggor', 'kust'] });
+  game.startRound();
+  game.answer(game.current.correctIndex);
+  game.ready();
+  time += 40000;
+  game.tick();
+  const holder = game.holder;
+  const remaining = game.remainingMs();
+  const progress = game.progress();
+  game.players[2].lives = 1;
+  const saved = JSON.parse(JSON.stringify(game.snapshot()));
+
+  time += 3600000; // appen var stängd en timme
+  const back = Game.restore(saved, { countries, rng: seeded(12), clock });
+  assert.ok(back);
+  assert.equal(back.phase, 'handover');
+  assert.ok(back.paused, 'fortsätter pausad');
+  assert.equal(back.holder, holder);
+  assert.equal(back.remainingMs(), remaining, 'ingen tid försvann');
+  assert.ok(Math.abs(back.progress() - progress) < 1e-9);
+  assert.deepEqual(back.players.map((p) => p.lives), [3, 3, 1]);
+  assert.deepEqual(back.categories, ['flaggor', 'kust']);
+  back.resume();
+  back.ready();
+  assert.equal(back.phase, 'question');
+  assert.equal(back.round, 1);
+});
+
+test('smällen och vinnaren kan sparas och visas igen', () => {
+  let time = 0;
+  const game = new Game({ players: trio, countries, rng: seeded(13), clock: () => time });
+  game.startRound();
+  time += RULES.fuseMaxMs;
+  game.tick();
+  const back = Game.restore(JSON.parse(JSON.stringify(game.snapshot())), { countries, clock: () => time });
+  assert.equal(back.phase, 'exploded');
+  assert.equal(back.explosion.loser, game.explosion.loser);
+  assert.equal(back.chooser, game.chooser);
+  back.nextRound();
+  assert.equal(back.phase, 'intro');
+  assert.equal(back.holder, game.chooser);
+});
+
+test('trasiga eller gamla sparningar ignoreras', () => {
+  assert.equal(Game.restore(null, { countries }), null);
+  assert.equal(Game.restore({ v: 0 }, { countries }), null);
+  assert.equal(Game.restore({ v: 1, players: [{ alias: 'A', level: 'normal', lives: 3 }] }, { countries }), null);
+  const game = new Game({ players: trio, countries, rng: seeded(14) });
+  const snap = game.snapshot();
+  assert.equal(Game.restore({ ...snap, holder: 7 }, { countries }), null);
+  assert.equal(Game.restore({ ...snap, phase: 'question', timer: null }, { countries }), null);
+});

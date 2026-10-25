@@ -5,6 +5,9 @@ import { CATEGORIES, Quiz } from './categories.js';
 import { TurnOrder } from './order.js';
 import { pick, randInt } from './random.js';
 
+// Ändras om snapshot() får ett nytt format, så att gamla sparningar ignoreras.
+const SNAPSHOT_VERSION = 1;
+
 export const RULES = {
   lives: 3,
   // Första rundans timer slumpas mellan min och max. Varje följande runda
@@ -243,6 +246,80 @@ export class Game {
     if (this.phase !== 'intro' && this.phase !== 'exploded') return;
     const valid = [...new Set(categories)].filter((c) => this.categories.includes(c));
     if (valid.length > 0) this.roundCategories = valid.slice(0, this.rules.maxRoundCategories);
+  }
+
+  // Ögonblicksbild som går att spara som JSON, så att matchen kan fortsätta om
+  // appen stängs. Tiderna sparas relativt nu, så att ingen tid går förlorad
+  // eller försvinner medan appen är stängd.
+  snapshot() {
+    const now = this.now();
+    const live = this.phase === 'question' || this.phase === 'handover';
+    return {
+      v: SNAPSHOT_VERSION,
+      players: this.players.map(({ alias, level, lives }) => ({ alias, level, lives })),
+      categories: this.categories,
+      roundCategories: this.roundCategories,
+      round: this.round,
+      phase: this.phase,
+      holder: this.holder,
+      chooser: this.chooser,
+      winner: this.winner,
+      questionCount: this.questionCount,
+      // Facit räcker för att rita smällen igen.
+      explosion: this.explosion && {
+        ...this.explosion,
+        question: this.explosion.question && { reveal: this.explosion.question.reveal },
+      },
+      order: { lap: this.order.lap, laps: this.order.laps },
+      timer: live
+        ? {
+            fuseMs: this.fuseMs,
+            remainingMs: this.deadline - now,
+            elapsedMs: now - this.startedAt,
+            calmElapsedMs: this.calmEndedAt === null ? null : now - this.calmEndedAt,
+          }
+        : null,
+    };
+  }
+
+  // Återskapar en match från snapshot(). Pågick en runda fortsätter den pausad,
+  // med mobilen på väg till den som hade bomben, som då får en ny fråga.
+  // Returnerar null om ögonblicksbilden inte går att använda.
+  static restore(snap, { countries, rng = Math.random, clock = () => Date.now(), rules = RULES }) {
+    if (!snap || snap.v !== SNAPSHOT_VERSION || !Array.isArray(snap.players) || snap.players.length < 2) return null;
+    const game = new Game({ players: snap.players, countries, categories: snap.categories, rng, clock, rules });
+    const n = game.players.length;
+    const isPlayer = (id) => Number.isInteger(id) && id >= 0 && id < n;
+    if (!isPlayer(snap.holder) || !['intro', 'question', 'handover', 'exploded', 'over'].includes(snap.phase)) {
+      return null;
+    }
+    snap.players.forEach((p, i) => (game.players[i].lives = Math.max(0, Math.min(rules.lives, p.lives))));
+    game.roundCategories = snap.roundCategories.filter((c) => game.categories.includes(c));
+    if (game.roundCategories.length === 0) game.roundCategories = [...game.categories];
+    game.round = snap.round;
+    game.phase = snap.phase;
+    game.holder = snap.holder;
+    game.chooser = isPlayer(snap.chooser) ? snap.chooser : null;
+    game.winner = isPlayer(snap.winner) ? snap.winner : null;
+    game.questionCount = snap.questionCount ?? 0;
+    game.explosion = snap.explosion;
+    game.order.lap = (snap.order?.lap ?? []).filter(isPlayer);
+    game.order.laps = snap.order?.laps ?? 0;
+    if (snap.phase === 'question' || snap.phase === 'handover') {
+      if (!snap.timer) return null;
+      const now = clock();
+      game.fuseMs = snap.timer.fuseMs;
+      game.deadline = now + snap.timer.remainingMs;
+      game.startedAt = now - snap.timer.elapsedMs;
+      game.calmEndedAt = snap.timer.calmElapsedMs === null ? null : now - snap.timer.calmElapsedMs;
+      game.lockedUntil = 0;
+      game.wrongPending = false;
+      game.phase = 'handover';
+      game.current = null;
+      game.paused = { at: now };
+    }
+    if ((game.phase === 'exploded' && !game.explosion) || (game.phase === 'over' && game.winner === null)) return null;
+    return game;
   }
 
   pause() {

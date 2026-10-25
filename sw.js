@@ -2,7 +2,7 @@
 //
 // VERSION skrivs av `npm run build` och ändras när något innehåll ändras. Då
 // skiljer sig sw.js från förra versionen, och webbläsaren installerar den nya.
-const VERSION = '22810ccfb868';
+const VERSION = 'dcc1fc05346d';
 importScripts(`precache.js?v=${VERSION}`);
 
 const CACHE = `passa-flaggan-${VERSION}`;

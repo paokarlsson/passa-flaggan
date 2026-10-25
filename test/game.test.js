@@ -140,7 +140,9 @@ test('matchen blir svårare för varje runda', () => {
   while (game.phase !== 'over') {
     game.startRound();
     levels.push(game.difficulty());
-    if (game.current.type === 'fraga') assert.equal(game.current.difficulty, game.difficulty());
+    if (game.current.type === 'fraga') {
+      assert.equal(game.current.difficulty, game.difficulty() * LEVELS[game.current.level].difficulty);
+    }
     advance(RULES.fuseMaxMs);
     game.nextRound();
   }

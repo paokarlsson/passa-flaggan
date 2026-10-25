@@ -1,6 +1,6 @@
 // Spelmotorn. Ren logik utan DOM, så att den går att testa i Node.
 // Tiden kommer från clock() i millisekunder, så att testerna kan styra den.
-import { LEVELS, difficultyForRound, maxRounds } from './questions.js';
+import { LEVELS, MIN_STEPS, difficultyForRound, maxRounds } from './questions.js';
 import { CATEGORIES, Quiz } from './categories.js';
 import { TurnOrder } from './order.js';
 import { pick, randInt } from './random.js';
@@ -115,13 +115,18 @@ export class Game {
     this.questionCount++;
     const level = this.player().level;
     const category = pick(this.rng, this.roundCategories);
-    const question = this.questions.next({ category, options: LEVELS[level].options, difficulty: this.difficulty() });
+    const question = this.questions.next({
+      category,
+      options: LEVELS[level].options,
+      difficulty: this.difficulty() * LEVELS[level].difficulty,
+    });
     this.current = { type: 'fraga', level, ...question };
   }
 
   // Svårighetstrappan: första rundan är lättast, och sista möjliga rundan svårast.
+  // Minst MIN_STEPS steg, så att trappan inte blir för brant med få spelare.
   difficulty() {
-    return difficultyForRound(this.round, maxRounds(this.players.length, this.rules.lives));
+    return difficultyForRound(this.round, Math.max(MIN_STEPS, maxRounds(this.players.length, this.rules.lives)));
   }
 
   isLocked() {

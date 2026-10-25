@@ -84,7 +84,9 @@ test('störst och flest invånare: rätt svar är störst, och skillnaden krympe
     }
     const median = (xs) => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)];
     assert.ok(median(ratios[0]) > 3, `${category}: lätt ska ha stor skillnad (${median(ratios[0])})`);
-    assert.ok(median(ratios[1]) < 1.6, `${category}: svårt ska ha liten skillnad (${median(ratios[1])})`);
+    // Kategorin ligger lägre i trappan (scale), så även det svåraste steget har viss skillnad.
+    assert.ok(median(ratios[1]) < 2.6, `${category}: svårt ska ha liten skillnad (${median(ratios[1])})`);
+    assert.ok(median(ratios[1]) < median(ratios[0]) / 2, category);
   }
 });
 
@@ -257,4 +259,70 @@ test('kategorierna kan väljas på skärmen före rundan, men inte mitt i den', 
   game.nextRound();
   game.chooseCategories(['udda', 'kust']);
   assert.deepEqual(game.roundCategories, ['udda', 'kust']);
+});
+
+// ---------- Svårigheten ska öka jämnt och vara rimlig ----------
+
+const shareUnknown = (category, difficulty, N = 300) => {
+  const quiz = new Quiz(countries, seeded(21));
+  let unknown = 0;
+  for (let i = 0; i < N; i++) if (quiz.next({ category, options: 4, difficulty }).answer.kand >= 3) unknown++;
+  return unknown / N;
+};
+
+test('andelen okända länder ökar jämnt, utan hopp', () => {
+  for (const category of ['flaggor', 'huvudstad', 'kust', 'siluett']) {
+    let prev = 0;
+    for (let d = 0.1; d <= 1.0001; d += 0.1) {
+      const share = shareUnknown(category, d);
+      assert.ok(share - prev < 0.3, `${category}: hopp från ${prev} till ${share} vid ${d.toFixed(1)}`);
+      prev = share;
+    }
+  }
+});
+
+test('svårare kategorier ligger lägre i trappan', () => {
+  assert.ok(shareUnknown('siluett', 0.5) < shareUnknown('flaggor', 0.5));
+  assert.ok(shareUnknown('storst', 0.5) < shareUnknown('flaggor', 0.5));
+});
+
+test('inga mikrostater i jämförelserna förrän allra sist', () => {
+  for (const [category, value, min] of [
+    ['storst', (c) => c.yta, 20000],
+    ['folk', (c) => c.folk, 1.5e6],
+  ]) {
+    const quiz = new Quiz(countries, seeded(22));
+    for (let i = 0; i < 300; i++) {
+      const q = quiz.next({ category, options: 4, difficulty: 1 });
+      for (const o of q.options) assert.ok(value(byName.get(o.text)) >= min, `${category}: ${o.text}`);
+    }
+  }
+});
+
+test('grannar: rätt svar är en känd granne när det är lätt', () => {
+  const quiz = new Quiz(countries, seeded(23));
+  for (let i = 0; i < 300; i++) {
+    const q = quiz.next({ category: 'grannar', options: 4, difficulty: 0.25 });
+    assert.ok(byName.get(q.options[q.correctIndex].text).kand <= 2, q.options[q.correctIndex].text);
+  }
+});
+
+test('trappan har minst tio steg och Barn ligger lägre', () => {
+  const duo = [
+    { alias: 'Ada', level: 'barn' },
+    { alias: 'Bo', level: 'normal' },
+  ];
+  const { game, advance } = setup(duo, { rules: { frikortChance: 0 } });
+  game.startRound();
+  advance(RULES.fuseMaxMs);
+  game.nextRound();
+  game.startRound();
+  assert.equal(game.difficulty(), 1 / 9, 'runda 2 av minst 10 steg');
+  // Rundans frågor: Barn får halva svårigheten.
+  for (let i = 0; i < 6; i++) {
+    const expected = game.difficulty() * (game.current.level === 'barn' ? 0.5 : 1);
+    assert.equal(game.current.difficulty, expected);
+    game.answer(game.current.correctIndex);
+    game.ready();
+  }
 });

@@ -192,7 +192,7 @@ function renderSetup() {
           <li>Den som håller mobilen när det smäller förlorar ett liv. Sist kvar vinner!</li>
           <li>Första rundan är lätt, och för varje runda blir länderna mer okända och svarsalternativen mer lika varandra.</li>
           <li>Kryssa i en eller flera kategorier. Den som sprängs väljer en eller två av dem till nästa runda.</li>
-          <li>Nivån styr antalet svarsalternativ: Barn 3, Normal 4, Nörd 6.</li>
+          <li>Nivån styr antalet svarsalternativ: Barn 3, Normal 4, Nörd 6. Barn får också lättare länder.</li>
           <li>Slå på ljudet (och stäng av ljudlöst läge på iPhone) för full effekt.</li>
         </ul>
       </details>

@@ -47,25 +47,30 @@ utspridda ögrupper inte i Siluett.
 
 ### Svårighetstrappa
 
-Svårigheten följer rundan och är samma för alla. Trappan har lika många steg
-som matchen kan ha rundor (liv × spelare − 1): 5 steg med 2 spelare, 8 med 3
-och så vidare. Revansch börjar om från första steget.
+Svårigheten följer rundan. Trappan har lika många steg som matchen kan ha
+rundor (liv × spelare − 1), men minst 10, så att den inte blir för brant med få
+spelare. Revansch börjar om från första steget.
 
 - **Kända länder först.** Alla länder är indelade i fem kändhetsgrupper i
   `data/kandhet.json`. Första rundan tar bara grupp 1 (t.ex. Sverige, USA,
-  Japan), och sedan flyttas fönstret uppåt till grupp 3–5 på sista steget.
+  Japan). Sedan blandas svårare grupper in gradvis, så att andelen okända
+  länder ökar jämnt, tills sista steget tar grupp 3–5.
+- **Olika svåra kategorier.** Kategorier som är svårare i sig (Siluett, Störst,
+  Flest invånare, Kust, Huvudstäder) når inte lika högt i trappan som Flaggor.
+  Jämförelserna tar inte med mikrostater förrän allra sist, och Grannar frågar
+  bara om länder som har en känd granne.
 - **Olika först.** Felalternativen ligger långt från rätt svar i början och
   nära på slutet, se tabellen ovan. Flaggornas och siluetternas likhet räknas
   ut från bilderna (`data/flaggfarger.json` och `data/siluettform.json`, tas
   fram med `scripts/fingeravtryck.cjs`).
 
-Spelarens nivå styr bara antalet alternativ:
+Spelarens nivå styr antalet alternativ, och Barn får dessutom halva svårigheten:
 
-| Nivå | Alternativ |
-|---|---|
-| Barn | 3 |
-| Normal | 4 |
-| Nörd | 6 |
+| Nivå | Alternativ | Svårighet |
+|---|---|---|
+| Barn | 3 | halva trappan |
+| Normal | 4 | hela trappan |
+| Nörd | 6 | hela trappan |
 
 ## Ljud
 

@@ -6,11 +6,15 @@
 // Spelarens nivå styr bara hur många alternativ som visas.
 import { pick, shuffle } from './random.js';
 
+// difficulty: hur högt i trappan nivån ligger. Barn får lättare länder än vuxna.
 export const LEVELS = {
-  barn: { label: 'Barn', options: 3 },
-  normal: { label: 'Normal', options: 4 },
-  nord: { label: 'Nörd', options: 6 },
+  barn: { label: 'Barn', options: 3, difficulty: 0.5 },
+  normal: { label: 'Normal', options: 4, difficulty: 1 },
+  nord: { label: 'Nörd', options: 6, difficulty: 1 },
 };
+
+// Trappan har minst så här många steg, så att den inte blir för brant med få spelare.
+export const MIN_STEPS = 10;
 
 export function levelForAge(age) {
   if (!Number.isFinite(age) || age <= 0) return 'normal';
@@ -30,11 +34,63 @@ export function difficultyForRound(round, totalRounds) {
   return Math.min(1, Math.max(0, (round - 1) / (totalRounds - 1)));
 }
 
-// Vilka kändhetsgrupper rätt svar hämtas ur. Börjar med bara grupp 1 och
-// flyttar uppåt: [1], [1–2], [1–3], [2–4], [3–5].
+// Vilka kändhetsgrupper felalternativen får hämtas ur: [1], [1–2], [1–3], [2–4], [3–5].
 export function tierRange(difficulty) {
   const top = 1 + Math.round(difficulty * 4);
   return [Math.max(1, top - 2), top];
+}
+
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+
+// Hur mycket varje kändhetsgrupp (1–5) väger vid svårigheten d. Fronten går
+// från grupp 1 till grupp 5. Nästa grupp tonas in gradvis, så att andelen okända
+// länder ökar jämnt i stället för i hopp, och grupper långt under fronten tonas ut.
+export function tierWeights(d) {
+  const front = 1 + 4 * clamp01(d);
+  return [1, 2, 3, 4, 5].map((k) => Math.min(clamp01(front - k + 1), clamp01(k - (front - 3))));
+}
+
+// Minst så många länder att välja bland, annars tas närmaste grupper med.
+const MIN_POOL = 6;
+
+// Väljer rätt svar. Varje kändhetsgrupp får sin vikt från tierWeights, så att
+// en stor grupp inte tar över. Finns för
+// få länder (t.ex. kända länder utan kust) fylls det på från närmaste grupper,
+// med lägre vikt ju längre bort de ligger. Länder i `recent` undviks tills de
+// flesta andra har visats.
+export function drawByTier(rng, items, d, recent) {
+  const weights = tierWeights(d);
+  const front = 1 + 4 * clamp01(d);
+  const weight = new Map();
+  for (const k of [1, 2, 3, 4, 5]) {
+    const inTier = items.filter((c) => c.kand === k);
+    for (const c of inTier) if (weights[k - 1] > 0) weight.set(c, weights[k - 1] / inTier.length);
+  }
+  const byDistance = shuffle(rng, items.filter((c) => !weight.has(c))).sort(
+    (x, y) => Math.abs(x.kand - front) - Math.abs(y.kand - front),
+  );
+  for (const c of byDistance) {
+    if (weight.size >= MIN_POOL) break;
+    weight.set(c, 0.5 ** Math.ceil(Math.abs(c.kand - front)) / MIN_POOL);
+  }
+  const allowed = [...weight.keys()];
+  // Först en grupp efter vikt, sedan ett land i gruppen. Då påverkar minnet av
+  // nyligen frågade länder bara vilket land det blir, inte hur svårt det är.
+  const weightedPick = (list) => {
+    let r = rng() * list.reduce((sum, [, w]) => sum + w, 0);
+    for (const [item, w] of list) if ((r -= w) < 0) return item;
+    return list[list.length - 1][0];
+  };
+  const tiers = [...new Set(allowed.map((c) => c.kand))];
+  const tier = weightedPick(
+    tiers.map((k) => [k, allowed.filter((c) => c.kand === k).reduce((sum, c) => sum + weight.get(c), 0)]),
+  );
+  const inTier = allowed.filter((c) => c.kand === tier);
+  const fresh = inTier.filter((c) => !recent.includes(c.id));
+  const answer = weightedPick((fresh.length ? fresh : inTier).map((c) => [c, weight.get(c)]));
+  recent.push(answer.id);
+  while (recent.length > Math.max(1, Math.floor(allowed.length * 0.66))) recent.shift();
+  return answer;
 }
 
 // Flaggor som är (nästan) identiska. De får aldrig visas som alternativ i
@@ -79,15 +135,7 @@ export class QuestionSource {
   }
 
   draw(difficulty) {
-    const [lo, hi] = tierRange(difficulty);
-    const pool = this.countries.filter((c) => c.kand >= lo && c.kand <= hi);
-    const fresh = pool.filter((c) => !this.recent.includes(c.id));
-    const answer = pick(this.rng, fresh.length ? fresh : pool);
-    this.recent.push(answer.id);
-    // Kom ihåg ungefär två tredjedelar av poolen, så att länder kommer igen
-    // först när de flesta andra har visats.
-    while (this.recent.length > Math.floor(pool.length * 0.66)) this.recent.shift();
-    return answer;
+    return drawByTier(this.rng, this.countries, difficulty, this.recent);
   }
 
   distractors(answer, count, difficulty) {

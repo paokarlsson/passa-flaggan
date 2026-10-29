@@ -1,5 +1,5 @@
 // Genererad av scripts/build.mjs, redigera inte för hand.
-self.PRECACHE_VERSION = '1224ee532994';
+self.PRECACHE_VERSION = 'ec7cb75c3fbe';
 self.PRECACHE_FILES = [
   "css/style.css",
   "data/countries.json",
@@ -217,6 +217,9 @@ self.PRECACHE_FILES = [
   "js/questions.js",
   "js/random.js",
   "js/tempo.js",
+  "js/view.js",
+  "js/vote-view.js",
+  "js/vote.js",
   "ljud/meny.mp3",
   "ljud/vinnare.mp3",
   "manifest.webmanifest",

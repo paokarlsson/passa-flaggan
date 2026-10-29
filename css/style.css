@@ -939,6 +939,296 @@ p {
   min-height: 44px;
 }
 
+/* ---------- Lobbyn ---------- */
+
+.lobby {
+  justify-content: center;
+}
+
+.game-card {
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  border: var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+
+.game-card:active {
+  transform: translate(4px, 4px);
+  box-shadow: var(--shadow-pressed);
+}
+
+.bomb-card {
+  background: var(--sun);
+  transform: rotate(-1deg);
+}
+
+.vote-card {
+  background: var(--mint);
+  transform: rotate(1deg);
+}
+
+.game-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-title {
+  font-family: var(--display);
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.game-desc {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.game-tag {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.back {
+  align-self: flex-start;
+  font: inherit;
+  font-weight: 900;
+  padding: 8px 14px;
+  border: var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.count {
+  font: inherit;
+  font-family: var(--display);
+  font-size: 1.3rem;
+  min-height: 48px;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.count.on {
+  background: var(--mint);
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* ---------- Hemlig omröstning ---------- */
+
+body[data-screen='vote-handover'] {
+  background-color: var(--mint);
+}
+
+body[data-screen='vote-ready'],
+body[data-screen='vote-over'] {
+  background-color: var(--sun);
+}
+
+body[data-screen='vote-reveal'] {
+  background-color: var(--lilac);
+}
+
+.pause.corner {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.ballot-idle {
+  animation: wobble 2.4s ease-in-out infinite;
+}
+
+/* Det valda alternativet: intryckt med tjock ram, de andra bleks. */
+.vote-answer .answers:has(.picked) .answer:not(.picked) {
+  opacity: 0.45;
+}
+
+.answer.picked {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.bets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bet-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 5px 5px 0;
+}
+
+.bet {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px;
+  border: var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+
+.bet strong {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.bet span {
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.bet-1 { background: #9fe3ff; }
+.bet-2 { background: var(--sun); }
+.bet-3 { background: var(--coral); }
+
+.bet:active {
+  transform: translate(4px, 4px);
+  box-shadow: var(--shadow-pressed);
+}
+
+.bet:disabled {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.votes,
+.scores {
+  list-style: none;
+  margin: 0;
+  padding: 0 5px 5px 0;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vote {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'name points'
+    'choice total';
+  align-items: center;
+  gap: 2px 10px;
+  padding: 8px 12px;
+  border: var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+  text-align: left;
+  animation: pop 0.35s ease-out backwards;
+}
+
+.vote:nth-child(2) { animation-delay: 0.1s; }
+.vote:nth-child(3) { animation-delay: 0.2s; }
+.vote:nth-child(4) { animation-delay: 0.3s; }
+.vote:nth-child(5) { animation-delay: 0.4s; }
+.vote:nth-child(6) { animation-delay: 0.5s; }
+.vote:nth-child(7) { animation-delay: 0.6s; }
+.vote:nth-child(8) { animation-delay: 0.7s; }
+
+.vote.right {
+  background: var(--mint);
+}
+
+.vote.miss {
+  background: #ececec;
+}
+
+.vote-name {
+  grid-area: name;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vote-choice {
+  grid-area: choice;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vote-choice .flag.thumb {
+  width: 36px;
+  height: 27px;
+}
+
+.vote.miss .vote-choice span {
+  text-decoration: line-through;
+}
+
+.vote-points {
+  grid-area: points;
+  justify-self: end;
+  font-family: var(--display);
+  font-size: 1.5rem;
+}
+
+.vote-total {
+  grid-area: total;
+  justify-self: end;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.scores .tile strong {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.2rem;
+}
+
 /* ---------- Effekter ---------- */
 
 /* Frysningen mellan att bomben smäller och att smällen visas. */

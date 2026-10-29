@@ -39,6 +39,18 @@ export const trophy = (size = 140) =>
     <rect x="36" y="84" width="48" height="16" rx="4" fill="var(--mint)" stroke="var(--ink)" stroke-width="4"/>
   </svg>`;
 
+// Valurna för Hemlig omröstning: en lapp med bock på väg ner i lådan.
+export const ballot = (size = 96) =>
+  `<svg class="icon ballot" width="${size}" height="${size}" viewBox="0 0 96 96" aria-hidden="true">
+    <g transform="rotate(-8 48 30)">
+      <rect x="30" y="6" width="36" height="40" rx="4" fill="#ffffff" stroke="var(--ink)" stroke-width="4"/>
+      <path d="M39 26l7 7 12-14" fill="none" stroke="var(--mint)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <rect x="10" y="40" width="76" height="48" rx="8" fill="var(--lilac)" stroke="var(--ink)" stroke-width="4"/>
+    <rect x="26" y="38" width="44" height="8" rx="4" fill="var(--ink)"/>
+    <path d="M22 62h52" stroke="var(--ink)" stroke-width="4" stroke-linecap="round" opacity=".25"/>
+  </svg>`;
+
 // Stjärnan bakom "PANG!".
 export const burst = () =>
   `<svg class="burst" viewBox="0 0 320 210" aria-hidden="true">

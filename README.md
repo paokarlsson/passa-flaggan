@@ -1,9 +1,13 @@
 # Passa flaggan
 
-Ett partyspel om flaggor för en mobil och ett helt sällskap. Mobilen är en bomb
-med dold timer: svara rätt på flaggan och skicka mobilen till den vars namn
-dyker upp. Den som håller mobilen när det smäller förlorar ett liv. Sist kvar
-vinner.
+Partyspel om flaggor och länder för en mobil och ett helt sällskap. I lobbyn
+väljer man mellan två spel:
+
+- **Passa flaggan:** mobilen är en bomb med dold timer. Svara rätt och skicka
+  mobilen till den vars namn dyker upp. Den som håller mobilen när det smäller
+  förlorar ett liv. Sist kvar vinner.
+- **Hemlig omröstning:** lugnare. Mobilen går runt och alla svarar i hemlighet
+  på samma fråga och satsar 1–3 poäng. Sedan visas allas svar samtidigt.
 
 Spelet är en installerbar webbapp utan konton eller server, och fungerar helt
 offline när det har öppnats en gång.
@@ -25,6 +29,21 @@ offline när det har öppnats en gång.
 - Fel svar: 1 sekunds spärr, 3 sekunder dras från bomben och en ny fråga visas.
 - Ungefär var tionde fråga byts mot ett frikort som skickar vidare direkt.
 - Ordningen slumpas, men alla får en tur per varv och ingen får mobilen två gånger i rad.
+
+## Hemlig omröstning
+
+- Samma spelare, nivåer och kategorier som Passa flaggan. Man väljer 5, 10
+  eller 15 frågor.
+- Alla får samma fråga. Mobilen går runt, och var och en väljer svar och satsar
+  1–3 poäng på hur säker den är. Rätt ger insatsen, fel drar av den.
+- När alla har svarat läggs mobilen i mitten och allas svar visas samtidigt,
+  med facit.
+- Vem som svarar först byts varje fråga. Det finns ingen tidsgräns.
+- Frågan görs med så många alternativ som den högsta nivån behöver, och var och
+  en ser sin nivås antal (Barn 3, Normal 4, Nörd 6), alltid med rätt svar.
+  Svårigheten följer samma trappa från första till sista frågan (minst 10
+  steg), skalad med snittet av spelarnas nivåer.
+- Flest poäng efter sista frågan vinner. Blir det lika delar man på segern.
 
 ### Kategorier
 
@@ -112,11 +131,14 @@ filer som sparas för offline-läge, med en version som ändras när innehållet
 
 ### Struktur
 
-- `js/game.js`: spelmotorn (faser, bomb, liv, frikort), utan DOM
+- `js/game.js`: spelmotorn för Passa flaggan (faser, bomb, liv, frikort), utan DOM
+- `js/vote.js`: spelmotorn för Hemlig omröstning (svar, insatser, poäng), utan DOM
 - `js/questions.js`: nivåer, svårighetstrappan och flaggfrågor
 - `js/categories.js`: alla kategorier och deras felsvar
 - `js/order.js`: turordningen
-- `js/main.js`: gränssnittet
+- `js/main.js`: gränssnittet: lobbyn, startskärmen och Passa flaggan
+- `js/vote-view.js`: skärmarna i Hemlig omröstning
+- `js/view.js`: det båda spelen ritar med (frågor, svarsknappar, facit)
 - `js/audio.js`: ljudmotorn (puls, effekter, smäll, keep-alive) och vibration
 - `js/tempo.js`: pulsens tempo och finter
 - `sw.js`: service worker för offline-läge
